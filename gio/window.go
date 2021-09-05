@@ -24,26 +24,10 @@ func NewWindow(options ...app.Option) *Window {
 	return &Window{Window: app.NewWindow(options...)}
 }
 
-func (w *Window) ContextEvents() ObservableContextEvent {
-	observable := func(observe ContextEventObserver, scheduler Scheduler, subscriber Subscriber) {
-		handler, observable := w.Handlers.ContextEvents()
-		//w.Invalidate() ???
-		observable(observe, scheduler, subscriber)
-		subscriber.OnUnsubscribe(func() {
-			w.Handlers.Delete(handler)
-		})
-	}
-	return observable
-}
-
 func (w *Window) FrameEvents() ObservableFrameEvent {
 	observable := func(observe FrameEventObserver, scheduler Scheduler, subscriber Subscriber) {
-		handler, observable := w.Handlers.FrameEvents()
+		w.Handlers.FrameEvents()(observe, scheduler, subscriber)
 		w.Invalidate()
-		observable(observe, scheduler, subscriber)
-		subscriber.OnUnsubscribe(func() {
-			w.Handlers.Delete(handler)
-		})
 	}
 	return observable
 }

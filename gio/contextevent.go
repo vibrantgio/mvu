@@ -1,6 +1,8 @@
 package gio
 
 import (
+	"fmt"
+
 	"gioui.org/io/event"
 	"gioui.org/io/system"
 	"gioui.org/layout"
@@ -17,8 +19,14 @@ type ContextEventHandler struct {
 	ContextEventObserver
 }
 
+func NewContextEventHandler() *ContextEventHandler {
+	return &ContextEventHandler{
+		Tag: tag(),
+	}
+}
+
 func (h ContextEventHandler) Name() string {
-	return "Context"
+	return fmt.Sprint("Context", h.Tag)
 }
 
 func (h ContextEventHandler) Dispatch(frame system.FrameEvent) bool {
@@ -34,16 +42,22 @@ func (h ContextEventHandler) Dispatch(frame system.FrameEvent) bool {
 func (h ContextEventHandler) Register(ops *op.Ops) {
 }
 
-func (h *Handlers) ContextEvents() (EventHandler, ObservableContextEvent) {
-	handler := &ContextEventHandler{Tag: tag()}
-	h.Append(handler)
-	observable := func(observe ContextEventObserver, subscribeOn Scheduler, subscriber Subscriber) {
-		observer := func(next ContextEvent, err error, done bool) {
+func (h *Handlers) ContextEvents() ObservableContextEvent {
+	observable := func(observe ContextEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewContextEventHandler()
+			handler.ContextEventObserver = func(next ContextEvent, err error, done bool) {
+				if subscriber.Subscribed() {
+					observe(next, err, done)
+				}
+			}
 			if subscriber.Subscribed() {
-				observe(next, err, done)
+				h.Append(handler)
+				subscriber.OnUnsubscribe(func() {
+					h.Delete(handler)
+				})
 			}
 		}
-		handler.ContextEventObserver = observer
 	}
-	return handler, observable
+	return observable
 }

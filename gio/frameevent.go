@@ -1,6 +1,7 @@
 package gio
 
 import (
+	"fmt"
 	"image"
 	"log"
 	"time"
@@ -31,8 +32,15 @@ type FrameEventHandler struct {
 	Fail int
 }
 
+func NewFrameEventHandler() *FrameEventHandler {
+	return &FrameEventHandler{
+		Tag:  tag(),
+		Chan: make(chan FrameEvent, 2),
+	}
+}
+
 func (h FrameEventHandler) Name() string {
-	return "Frame"
+	return fmt.Sprint("Frame", h.Tag)
 }
 
 func (h *FrameEventHandler) Dispatch(frame system.FrameEvent) bool {
@@ -53,9 +61,18 @@ func (h *FrameEventHandler) Dispatch(frame system.FrameEvent) bool {
 func (h *FrameEventHandler) Register(ops *op.Ops) {
 }
 
-func (h *Handlers) FrameEvents() (EventHandler, ObservableFrameEvent) {
-	c := make(chan FrameEvent, 2)
-	handler := &FrameEventHandler{Tag: tag(), Chan: c}
-	h.Append(handler)
-	return handler, FromChanFrameEvent(c)
+func (h *Handlers) FrameEvents() ObservableFrameEvent {
+	observable := func(observe FrameEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewFrameEventHandler()
+			FromChanFrameEvent(handler.Chan)(observe, scheduler, subscriber)
+			if subscriber.Subscribed() {
+				h.Append(handler)
+				subscriber.OnUnsubscribe(func() {
+					h.Delete(handler)
+				})
+			}
+		}
+	}
+	return observable
 }
