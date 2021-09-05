@@ -20,6 +20,10 @@ type KeyEventHandler struct {
 	Fail int
 }
 
+func (h KeyEventHandler) Name() string {
+	return "Key"
+}
+
 func (h *KeyEventHandler) Dispatch(frame system.FrameEvent) bool {
 	for _, e := range frame.Queue.Events(h.Tag) {
 		if event, ok := e.(key.Event); ok {

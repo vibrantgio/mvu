@@ -20,6 +20,10 @@ type FocusEventHandler struct {
 	Fail int
 }
 
+func (h FocusEventHandler) Name() string {
+	return "Focus"
+}
+
 func (h *FocusEventHandler) Dispatch(frame system.FrameEvent) bool {
 	for _, e := range frame.Queue.Events(h.Tag) {
 		if event, ok := e.(key.FocusEvent); ok {

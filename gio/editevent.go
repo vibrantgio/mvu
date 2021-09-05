@@ -20,6 +20,10 @@ type EditEventHandler struct {
 	Fail int
 }
 
+func (h EditEventHandler) Name() string {
+	return "Edit"
+}
+
 func (h *EditEventHandler) Dispatch(frame system.FrameEvent) bool {
 	for _, e := range frame.Queue.Events(h.Tag) {
 		if event, ok := e.(key.EditEvent); ok {

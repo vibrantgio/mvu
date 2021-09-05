@@ -31,6 +31,10 @@ type FrameEventHandler struct {
 	Fail int
 }
 
+func (h FrameEventHandler) Name() string {
+	return "Frame"
+}
+
 func (h *FrameEventHandler) Dispatch(frame system.FrameEvent) bool {
 	if h.Chan != nil {
 		select {

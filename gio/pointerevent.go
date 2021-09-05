@@ -21,6 +21,10 @@ type PointerEventHandler struct {
 	Fail  int
 }
 
+func (h PointerEventHandler) Name() string {
+	return "Pointer"
+}
+
 func (h *PointerEventHandler) Dispatch(frame system.FrameEvent) bool {
 	if h.Chan != nil {
 		for _, e := range frame.Queue.Events(h.Tag) {

@@ -19,6 +19,10 @@ type ClickEventHandler struct {
 	Fail int
 }
 
+func (h ClickEventHandler) Name() string {
+	return "Click"
+}
+
 func (h *ClickEventHandler) Dispatch(frame system.FrameEvent) bool {
 	for _, event := range h.Click.Events(frame.Queue) {
 		if h.Chan != nil {

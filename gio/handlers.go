@@ -8,6 +8,7 @@ import (
 )
 
 type EventHandler interface {
+	Name() string
 	Dispatch(system.FrameEvent) bool
 	Register(*op.Ops)
 }

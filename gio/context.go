@@ -17,6 +17,10 @@ type ContextEventHandler struct {
 	ContextEventObserver
 }
 
+func (h ContextEventHandler) Name() string {
+	return "Context"
+}
+
 func (h ContextEventHandler) Dispatch(frame system.FrameEvent) bool {
 	if h.ContextEventObserver == nil {
 		return false
