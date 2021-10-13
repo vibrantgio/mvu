@@ -20,6 +20,13 @@ type FocusEventHandler struct {
 	Fail int
 }
 
+func NewFocusEventHandler() *FocusEventHandler {
+	return &FocusEventHandler{
+		Tag:  tag(),
+		Chan: make(chan FocusEvent, 2),
+	}
+}
+
 func (h FocusEventHandler) Name() string {
 	return "Focus"
 }
@@ -47,10 +54,13 @@ func (h *FocusEventHandler) Register(ops *op.Ops) {
 }
 
 func (h *Handlers) FocusEvents() ObservableFocusEvent {
-	observable := DeferFocusEvent(func() ObservableFocusEvent {
-		c := make(chan FocusEvent, 2)
-		h.Append(&FocusEventHandler{Tag: tag(), Chan: c})
-		return FromChanFocusEvent(c)
-	})
+	observable := func(observe FocusEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewFocusEventHandler()
+			FromChanFocusEvent(handler.Chan)(observe, scheduler, subscriber)
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
+		}
+	}
 	return observable
 }

@@ -15,27 +15,30 @@ type ContextEvent struct {
 }
 
 type ContextEventHandler struct {
-	Tag event.Tag
-	ContextEventObserver
+	Tag     event.Tag
+	Observe ContextEventObserver
 }
 
-func NewContextEventHandler() *ContextEventHandler {
+func NewContextEventHandler(observe ContextEventObserver) *ContextEventHandler {
 	return &ContextEventHandler{
-		Tag: tag(),
+		Tag:     tag(),
+		Observe: observe,
 	}
 }
 
 func (h ContextEventHandler) Name() string {
-	return fmt.Sprint("Context", h.Tag)
+	return fmt.Sprintf("Context %v", *h.Tag.(*int))
 }
 
 func (h ContextEventHandler) Dispatch(frame system.FrameEvent) bool {
-	if h.ContextEventObserver == nil {
+	if h.Observe == nil {
 		return false
 	}
-	observe := h.ContextEventObserver
-	context := layout.NewContext(new(op.Ops), frame)
-	observe(ContextEvent{Tag: h.Tag, Context: context}, nil, false)
+	event := ContextEvent{
+		Tag:     h.Tag,
+		Context: layout.NewContext(new(op.Ops), frame),
+	}
+	h.Observe(event, nil, false)
 	return true
 }
 
@@ -45,18 +48,13 @@ func (h ContextEventHandler) Register(ops *op.Ops) {
 func (h *Handlers) ContextEvents() ObservableContextEvent {
 	observable := func(observe ContextEventObserver, scheduler Scheduler, subscriber Subscriber) {
 		if subscriber.Subscribed() {
-			handler := NewContextEventHandler()
-			handler.ContextEventObserver = func(next ContextEvent, err error, done bool) {
+			handler := NewContextEventHandler(func(next ContextEvent, err error, done bool) {
 				if subscriber.Subscribed() {
 					observe(next, err, done)
 				}
-			}
-			if subscriber.Subscribed() {
-				h.Append(handler)
-				subscriber.OnUnsubscribe(func() {
-					h.Delete(handler)
-				})
-			}
+			})
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
 		}
 	}
 	return observable

@@ -40,7 +40,7 @@ func NewFrameEventHandler() *FrameEventHandler {
 }
 
 func (h FrameEventHandler) Name() string {
-	return fmt.Sprint("Frame", h.Tag)
+	return fmt.Sprintf("Frame %v", *h.Tag.(*int))
 }
 
 func (h *FrameEventHandler) Dispatch(frame system.FrameEvent) bool {
@@ -66,12 +66,8 @@ func (h *Handlers) FrameEvents() ObservableFrameEvent {
 		if subscriber.Subscribed() {
 			handler := NewFrameEventHandler()
 			FromChanFrameEvent(handler.Chan)(observe, scheduler, subscriber)
-			if subscriber.Subscribed() {
-				h.Append(handler)
-				subscriber.OnUnsubscribe(func() {
-					h.Delete(handler)
-				})
-			}
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
 		}
 	}
 	return observable

@@ -1,6 +1,7 @@
 package gio
 
 import (
+	"fmt"
 	"log"
 
 	"gioui.org/io/event"
@@ -11,6 +12,7 @@ import (
 
 type PointerEvent struct {
 	event.Tag
+	Types pointer.Type
 	pointer.Event
 }
 
@@ -21,8 +23,16 @@ type PointerEventHandler struct {
 	Fail  int
 }
 
+func NewPointerEventHandler(types pointer.Type) *PointerEventHandler {
+	return &PointerEventHandler{
+		Tag:   tag(),
+		Types: types,
+		Chan:  make(chan PointerEvent, 2),
+	}
+}
+
 func (h PointerEventHandler) Name() string {
-	return "Pointer"
+	return fmt.Sprintf("Pointer %v", *h.Tag.(*int))
 }
 
 func (h *PointerEventHandler) Dispatch(frame system.FrameEvent) bool {
@@ -31,7 +41,7 @@ func (h *PointerEventHandler) Dispatch(frame system.FrameEvent) bool {
 			if event, ok := e.(pointer.Event); ok {
 				if h.Chan != nil {
 					select {
-					case h.Chan <- PointerEvent{Tag: tag, Event: event}:
+					case h.Chan <- PointerEvent{Tag: h.Tag, Types: h.Types, Event: event}:
 						h.Fail = 0
 					default:
 						log.Println("Dropping Pointer Event", event)
@@ -48,17 +58,18 @@ func (h *PointerEventHandler) Dispatch(frame system.FrameEvent) bool {
 
 func (h *PointerEventHandler) Register(ops *op.Ops) {
 	if h.Chan != nil {
-		// state := op.Save(ops)
 		pointer.InputOp{Tag: h.Tag, Types: h.Types}.Add(ops)
-		// state.Load()
 	}
 }
 
 func (h *Handlers) PointerEvents(types pointer.Type) ObservablePointerEvent {
-	observable := DeferPointerEvent(func() ObservablePointerEvent {
-		c := make(chan PointerEvent, 2)
-		h.Append(&PointerEventHandler{Tag: tag(), Types: types, Chan: c})
-		return FromChanPointerEvent(c)
-	})
+	observable := func(observe PointerEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewPointerEventHandler(types)
+			FromChanPointerEvent(handler.Chan)(observe, scheduler, subscriber)
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
+		}
+	}
 	return observable
 }

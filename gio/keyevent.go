@@ -20,6 +20,13 @@ type KeyEventHandler struct {
 	Fail int
 }
 
+func NewKeyEventHandler() *KeyEventHandler {
+	return &KeyEventHandler{
+		Tag:  tag(),
+		Chan: make(chan KeyEvent, 2),
+	}
+}
+
 func (h KeyEventHandler) Name() string {
 	return "Key"
 }
@@ -47,10 +54,13 @@ func (h *KeyEventHandler) Register(ops *op.Ops) {
 }
 
 func (h *Handlers) KeyEvents() ObservableKeyEvent {
-	observable := DeferKeyEvent(func() ObservableKeyEvent {
-		c := make(chan KeyEvent, 2)
-		h.Append(&KeyEventHandler{Tag: tag(), Chan: c})
-		return FromChanKeyEvent(c)
-	})
+	observable := func(observe KeyEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewKeyEventHandler()
+			FromChanKeyEvent(handler.Chan)(observe, scheduler, subscriber)
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
+		}
+	}
 	return observable
 }

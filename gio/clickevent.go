@@ -19,6 +19,13 @@ type ClickEventHandler struct {
 	Fail int
 }
 
+func NewClickEventHandler() *ClickEventHandler {
+	return &ClickEventHandler{
+		Click: &gesture.Click{},
+		Chan:  make(chan ClickEvent, 2),
+	}
+}
+
 func (h ClickEventHandler) Name() string {
 	return "Click"
 }
@@ -44,10 +51,13 @@ func (h ClickEventHandler) Register(ops *op.Ops) {
 }
 
 func (h *Handlers) ClickEvents() ObservableClickEvent {
-	observable := DeferClickEvent(func() ObservableClickEvent {
-		c := make(chan ClickEvent, 2)
-		h.Append(&ClickEventHandler{Click: &gesture.Click{}, Chan: c})
-		return FromChanClickEvent(c)
-	})
+	observable := func(observe ClickEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewClickEventHandler()
+			FromChanClickEvent(handler.Chan)(observe, scheduler, subscriber)
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
+		}
+	}
 	return observable
 }

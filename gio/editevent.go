@@ -20,6 +20,13 @@ type EditEventHandler struct {
 	Fail int
 }
 
+func NewEditEventHandler() *EditEventHandler {
+	return &EditEventHandler{
+		Tag:  tag(),
+		Chan: make(chan EditEvent, 2),
+	}
+}
+
 func (h EditEventHandler) Name() string {
 	return "Edit"
 }
@@ -47,10 +54,13 @@ func (h *EditEventHandler) Register(ops *op.Ops) {
 }
 
 func (h *Handlers) EditEvents() ObservableEditEvent {
-	observable := DeferEditEvent(func() ObservableEditEvent {
-		c := make(chan EditEvent, 2)
-		h.Append(&EditEventHandler{Tag: tag(), Chan: c})
-		return FromChanEditEvent(c)
-	})
+	observable := func(observe EditEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		if subscriber.Subscribed() {
+			handler := NewEditEventHandler()
+			FromChanEditEvent(handler.Chan)(observe, scheduler, subscriber)
+			h.Append(handler)
+			subscriber.OnUnsubscribe(func() { h.Delete(handler) })
+		}
+	}
 	return observable
 }
