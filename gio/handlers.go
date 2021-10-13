@@ -1,11 +1,14 @@
 package gio
 
 import (
+	"fmt"
 	"sync"
 
 	"gioui.org/io/system"
 	"gioui.org/op"
 )
+
+const kLogHandlers = false
 
 type EventHandler interface {
 	Name() string
@@ -40,6 +43,15 @@ func (h *Handlers) Delete(e EventHandler) {
 func (m *Handlers) Dispatch(ops *op.Ops, frame system.FrameEvent) {
 	m.Lock()
 	defer m.Unlock()
+
+	if kLogHandlers {
+		names := []string{}
+		for _, item := range m.Items {
+			names = append(names, item.Name())
+		}
+		fmt.Println(names)
+	}
+
 	items := m.Items[:0]
 	for i, handler := range m.Items {
 		if !handler.Dispatch(frame) {
