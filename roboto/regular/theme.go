@@ -2,13 +2,17 @@ package regular
 
 import "github.com/reactivego/vibrant/text"
 
+const (
+	Roboto = "Roboto"
+)
+
 var (
-	RobotoThin   = text.Font{Typeface: "Roboto", Variant: "", Style: text.Regular, Weight: text.Thin}
-	RobotoLight  = text.Font{Typeface: "Roboto", Variant: "", Style: text.Regular, Weight: text.Light}
-	RobotoNormal = text.Font{Typeface: "Roboto", Variant: "", Style: text.Regular, Weight: text.Normal}
-	RobotoMedium = text.Font{Typeface: "Roboto", Variant: "", Style: text.Regular, Weight: text.Medium}
-	RobotoBold   = text.Font{Typeface: "Roboto", Variant: "", Style: text.Regular, Weight: text.Bold}
-	RobotoBlack  = text.Font{Typeface: "Roboto", Variant: "", Style: text.Regular, Weight: text.Black}
+	RobotoThin   = text.Font{Typeface: Roboto, Variant: "", Style: text.Regular, Weight: text.Thin}
+	RobotoLight  = text.Font{Typeface: Roboto, Variant: "", Style: text.Regular, Weight: text.Light}
+	RobotoNormal = text.Font{Typeface: Roboto, Variant: "", Style: text.Regular, Weight: text.Normal}
+	RobotoMedium = text.Font{Typeface: Roboto, Variant: "", Style: text.Regular, Weight: text.Medium}
+	RobotoBold   = text.Font{Typeface: Roboto, Variant: "", Style: text.Regular, Weight: text.Bold}
+	RobotoBlack  = text.Font{Typeface: Roboto, Variant: "", Style: text.Regular, Weight: text.Black}
 )
 
 var (
