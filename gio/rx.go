@@ -25,22 +25,6 @@ type Scheduler = scheduler.Scheduler
 // from a single subscriber at the root of the subscription tree.
 type Subscriber = subscriber.Subscriber
 
-//jig:name EditEventObserver
-
-// EditEventObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type EditEventObserver func(next EditEvent, err error, done bool)
-
-//jig:name ObservableEditEvent
-
-// ObservableEditEvent is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservableEditEvent func(EditEventObserver, Scheduler, Subscriber)
-
 //jig:name FrameEventObserver
 
 // FrameEventObserver is a function that gets called whenever the Observable has
@@ -56,91 +40,6 @@ type FrameEventObserver func(next FrameEvent, err error, done bool)
 // ObservableFrameEvent is a function taking an Observer, Scheduler and Subscriber.
 // Calling it will subscribe the Observer to events from the Observable.
 type ObservableFrameEvent func(FrameEventObserver, Scheduler, Subscriber)
-
-//jig:name PointerEventObserver
-
-// PointerEventObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type PointerEventObserver func(next PointerEvent, err error, done bool)
-
-//jig:name ObservablePointerEvent
-
-// ObservablePointerEvent is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservablePointerEvent func(PointerEventObserver, Scheduler, Subscriber)
-
-//jig:name ContextEventObserver
-
-// ContextEventObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type ContextEventObserver func(next ContextEvent, err error, done bool)
-
-//jig:name ObservableContextEvent
-
-// ObservableContextEvent is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservableContextEvent func(ContextEventObserver, Scheduler, Subscriber)
-
-//jig:name CallOpObserver
-
-// CallOpObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type CallOpObserver func(next CallOp, err error, done bool)
-
-//jig:name ObservableCallOp
-
-// ObservableCallOp is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservableCallOp func(CallOpObserver, Scheduler, Subscriber)
-
-//jig:name Subscription
-
-// Subscription is an alias for the subscriber.Subscription interface type.
-type Subscription = subscriber.Subscription
-
-//jig:name ClickEventObserver
-
-// ClickEventObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type ClickEventObserver func(next ClickEvent, err error, done bool)
-
-//jig:name ObservableClickEvent
-
-// ObservableClickEvent is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservableClickEvent func(ClickEventObserver, Scheduler, Subscriber)
-
-//jig:name FocusEventObserver
-
-// FocusEventObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type FocusEventObserver func(next FocusEvent, err error, done bool)
-
-//jig:name ObservableFocusEvent
-
-// ObservableFocusEvent is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservableFocusEvent func(FocusEventObserver, Scheduler, Subscriber)
 
 //jig:name KeyEventObserver
 
@@ -158,57 +57,106 @@ type KeyEventObserver func(next KeyEvent, err error, done bool)
 // Calling it will subscribe the Observer to events from the Observable.
 type ObservableKeyEvent func(KeyEventObserver, Scheduler, Subscriber)
 
-//jig:name DeferEditEvent
+//jig:name PointerEventObserver
 
-// DeferEditEvent does not create the ObservableEditEvent until the observer subscribes.
-// It creates a fresh ObservableEditEvent for each subscribing observer. Use it to
-// create observables that maintain separate state per subscription.
-func DeferEditEvent(factory func() ObservableEditEvent) ObservableEditEvent {
-	observable := func(observe EditEventObserver, scheduler Scheduler, subscriber Subscriber) {
-		factory()(observe, scheduler, subscriber)
-	}
-	return observable
-}
+// PointerEventObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type PointerEventObserver func(next PointerEvent, err error, done bool)
 
-//jig:name FromChanEditEvent
+//jig:name ObservablePointerEvent
 
-// FromChanEditEvent creates an ObservableEditEvent from a Go channel of EditEvent values.
-// It's not possible for the code feeding into the channel to send an error.
-// The feeding code can send nil or more EditEvent items and then closing the
-// channel will be seen as completion.
-func FromChanEditEvent(ch <-chan EditEvent) ObservableEditEvent {
-	observable := func(observe EditEventObserver, scheduler Scheduler, subscriber Subscriber) {
-		cancel := make(chan struct{})
-		runner := scheduler.ScheduleRecursive(func(self func()) {
-			if !subscriber.Subscribed() {
-				return
-			}
-			select {
-			case next, ok := <-ch:
-				if !subscriber.Subscribed() {
-					return
-				}
-				if ok {
-					observe(next, nil, false)
-					if !subscriber.Subscribed() {
-						return
-					}
-					self()
-				} else {
-					var zero EditEvent
-					observe(zero, nil, true)
-				}
-			case <-cancel:
-				return
-			}
-		})
-		subscriber.OnUnsubscribe(func() {
-			runner.Cancel()
-			close(cancel)
-		})
-	}
-	return observable
-}
+// ObservablePointerEvent is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservablePointerEvent func(PointerEventObserver, Scheduler, Subscriber)
+
+//jig:name CallOpObserver
+
+// CallOpObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type CallOpObserver func(next CallOp, err error, done bool)
+
+//jig:name ObservableCallOp
+
+// ObservableCallOp is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservableCallOp func(CallOpObserver, Scheduler, Subscriber)
+
+//jig:name ClickEventObserver
+
+// ClickEventObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type ClickEventObserver func(next ClickEvent, err error, done bool)
+
+//jig:name ObservableClickEvent
+
+// ObservableClickEvent is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservableClickEvent func(ClickEventObserver, Scheduler, Subscriber)
+
+//jig:name ContextEventObserver
+
+// ContextEventObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type ContextEventObserver func(next ContextEvent, err error, done bool)
+
+//jig:name ObservableContextEvent
+
+// ObservableContextEvent is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservableContextEvent func(ContextEventObserver, Scheduler, Subscriber)
+
+//jig:name EditEventObserver
+
+// EditEventObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type EditEventObserver func(next EditEvent, err error, done bool)
+
+//jig:name ObservableEditEvent
+
+// ObservableEditEvent is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservableEditEvent func(EditEventObserver, Scheduler, Subscriber)
+
+//jig:name FocusEventObserver
+
+// FocusEventObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type FocusEventObserver func(next FocusEvent, err error, done bool)
+
+//jig:name ObservableFocusEvent
+
+// ObservableFocusEvent is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservableFocusEvent func(FocusEventObserver, Scheduler, Subscriber)
+
+//jig:name Subscription
+
+// Subscription is an alias for the subscriber.Subscription interface type.
+type Subscription = subscriber.Subscription
 
 //jig:name FromChanFrameEvent
 
@@ -250,14 +198,54 @@ func FromChanFrameEvent(ch <-chan FrameEvent) ObservableFrameEvent {
 	return observable
 }
 
-//jig:name DeferPointerEvent
+//jig:name DeferKeyEvent
 
-// DeferPointerEvent does not create the ObservablePointerEvent until the observer subscribes.
-// It creates a fresh ObservablePointerEvent for each subscribing observer. Use it to
+// DeferKeyEvent does not create the ObservableKeyEvent until the observer subscribes.
+// It creates a fresh ObservableKeyEvent for each subscribing observer. Use it to
 // create observables that maintain separate state per subscription.
-func DeferPointerEvent(factory func() ObservablePointerEvent) ObservablePointerEvent {
-	observable := func(observe PointerEventObserver, scheduler Scheduler, subscriber Subscriber) {
+func DeferKeyEvent(factory func() ObservableKeyEvent) ObservableKeyEvent {
+	observable := func(observe KeyEventObserver, scheduler Scheduler, subscriber Subscriber) {
 		factory()(observe, scheduler, subscriber)
+	}
+	return observable
+}
+
+//jig:name FromChanKeyEvent
+
+// FromChanKeyEvent creates an ObservableKeyEvent from a Go channel of KeyEvent values.
+// It's not possible for the code feeding into the channel to send an error.
+// The feeding code can send nil or more KeyEvent items and then closing the
+// channel will be seen as completion.
+func FromChanKeyEvent(ch <-chan KeyEvent) ObservableKeyEvent {
+	observable := func(observe KeyEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		cancel := make(chan struct{})
+		runner := scheduler.ScheduleRecursive(func(self func()) {
+			if !subscriber.Subscribed() {
+				return
+			}
+			select {
+			case next, ok := <-ch:
+				if !subscriber.Subscribed() {
+					return
+				}
+				if ok {
+					observe(next, nil, false)
+					if !subscriber.Subscribed() {
+						return
+					}
+					self()
+				} else {
+					var zero KeyEvent
+					observe(zero, nil, true)
+				}
+			case <-cancel:
+				return
+			}
+		})
+		subscriber.OnUnsubscribe(func() {
+			runner.Cancel()
+			close(cancel)
+		})
 	}
 	return observable
 }
@@ -302,158 +290,6 @@ func FromChanPointerEvent(ch <-chan PointerEvent) ObservablePointerEvent {
 	return observable
 }
 
-//jig:name CallOpSlice
-
-type CallOpSlice = []CallOp
-
-//jig:name ObservableObservableCallOp_CombineLatestAll
-
-// CombineLatestAll flattens a higher order observable
-// (e.g. ObservableObservableCallOp) by subscribing to
-// all emitted observables (ie. ObservableCallOp entries) until the source
-// completes. It will then wait for all of the subscribed ObservableCallOps
-// to emit before emitting the first slice. Whenever any of the subscribed
-// observables emits, a new slice will be emitted containing all the latest
-// value.
-func (o ObservableObservableCallOp) CombineLatestAll() ObservableCallOpSlice {
-	observable := func(observe CallOpSliceObserver, subscribeOn Scheduler, subscriber Subscriber) {
-		observables := []ObservableCallOp(nil)
-		var observers struct {
-			sync.Mutex
-			assigned	[]bool
-			values		[]CallOp
-			initialized	int
-			active		int
-		}
-		makeObserver := func(index int) CallOpObserver {
-			observer := func(next CallOp, err error, done bool) {
-				observers.Lock()
-				defer observers.Unlock()
-				if observers.active > 0 {
-					switch {
-					case !done:
-						if !observers.assigned[index] {
-							observers.assigned[index] = true
-							observers.initialized++
-						}
-						observers.values[index] = next
-						if observers.initialized == len(observers.values) {
-							observe(observers.values, nil, false)
-						}
-					case err != nil:
-						observers.active = 0
-						var zero []CallOp
-						observe(zero, err, true)
-					default:
-						if observers.active--; observers.active == 0 {
-							var zero []CallOp
-							observe(zero, nil, true)
-						}
-					}
-				}
-			}
-			return observer
-		}
-
-		observer := func(next ObservableCallOp, err error, done bool) {
-			switch {
-			case !done:
-				observables = append(observables, next)
-			case err != nil:
-				var zero []CallOp
-				observe(zero, err, true)
-			default:
-				subscribeOn.Schedule(func() {
-					if subscriber.Subscribed() {
-						numObservables := len(observables)
-						observers.assigned = make([]bool, numObservables)
-						observers.values = make([]CallOp, numObservables)
-						observers.active = numObservables
-						for i, v := range observables {
-							if !subscriber.Subscribed() {
-								return
-							}
-							v(makeObserver(i), subscribeOn, subscriber)
-						}
-					}
-				})
-			}
-		}
-		o(observer, subscribeOn, subscriber)
-	}
-	return observable
-}
-
-//jig:name CombineLatestCallOp
-
-// CombineLatest will subscribe to all ObservableCallOps. It will then wait for
-// all of them to emit before emitting the first slice. Whenever any of the
-// subscribed observables emits, a new slice will be emitted containing all
-// the latest value.
-func CombineLatestCallOp(observables ...ObservableCallOp) ObservableCallOpSlice {
-	return FromObservableCallOp(observables...).CombineLatestAll()
-}
-
-//jig:name EventObserver
-
-// EventObserver is a function that gets called whenever the Observable has
-// something to report. The next argument is the item value that is only
-// valid when the done argument is false. When done is true and the err
-// argument is not nil, then the Observable has terminated with an error.
-// When done is true and the err argument is nil, then the Observable has
-// completed normally.
-type EventObserver func(next event.Event, err error, done bool)
-
-//jig:name ObservableEvent
-
-// ObservableEvent is a function taking an Observer, Scheduler and Subscriber.
-// Calling it will subscribe the Observer to events from the Observable.
-type ObservableEvent func(EventObserver, Scheduler, Subscriber)
-
-//jig:name FromChanEvent
-
-// FromChanEvent creates an ObservableEvent from a Go channel of event.Event values.
-// It's not possible for the code feeding into the channel to send an error.
-// The feeding code can send nil or more event.Event items and then closing the
-// channel will be seen as completion.
-func FromChanEvent(ch <-chan event.Event) ObservableEvent {
-	observable := func(observe EventObserver, scheduler Scheduler, subscriber Subscriber) {
-		cancel := make(chan struct{})
-		runner := scheduler.ScheduleRecursive(func(self func()) {
-			if !subscriber.Subscribed() {
-				return
-			}
-			select {
-			case next, ok := <-ch:
-				if !subscriber.Subscribed() {
-					return
-				}
-				if ok {
-					observe(next, nil, false)
-					if !subscriber.Subscribed() {
-						return
-					}
-					self()
-				} else {
-					var zero event.Event
-					observe(zero, nil, true)
-				}
-			case <-cancel:
-				return
-			}
-		})
-		subscriber.OnUnsubscribe(func() {
-			runner.Cancel()
-			close(cancel)
-		})
-	}
-	return observable
-}
-
-//jig:name Slice
-
-type Slice = []interface{}
-
 //jig:name DeferClickEvent
 
 // DeferClickEvent does not create the ObservableClickEvent until the observer subscribes.
@@ -492,6 +328,58 @@ func FromChanClickEvent(ch <-chan ClickEvent) ObservableClickEvent {
 					self()
 				} else {
 					var zero ClickEvent
+					observe(zero, nil, true)
+				}
+			case <-cancel:
+				return
+			}
+		})
+		subscriber.OnUnsubscribe(func() {
+			runner.Cancel()
+			close(cancel)
+		})
+	}
+	return observable
+}
+
+//jig:name DeferEditEvent
+
+// DeferEditEvent does not create the ObservableEditEvent until the observer subscribes.
+// It creates a fresh ObservableEditEvent for each subscribing observer. Use it to
+// create observables that maintain separate state per subscription.
+func DeferEditEvent(factory func() ObservableEditEvent) ObservableEditEvent {
+	observable := func(observe EditEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		factory()(observe, scheduler, subscriber)
+	}
+	return observable
+}
+
+//jig:name FromChanEditEvent
+
+// FromChanEditEvent creates an ObservableEditEvent from a Go channel of EditEvent values.
+// It's not possible for the code feeding into the channel to send an error.
+// The feeding code can send nil or more EditEvent items and then closing the
+// channel will be seen as completion.
+func FromChanEditEvent(ch <-chan EditEvent) ObservableEditEvent {
+	observable := func(observe EditEventObserver, scheduler Scheduler, subscriber Subscriber) {
+		cancel := make(chan struct{})
+		runner := scheduler.ScheduleRecursive(func(self func()) {
+			if !subscriber.Subscribed() {
+				return
+			}
+			select {
+			case next, ok := <-ch:
+				if !subscriber.Subscribed() {
+					return
+				}
+				if ok {
+					observe(next, nil, false)
+					if !subscriber.Subscribed() {
+						return
+					}
+					self()
+				} else {
+					var zero EditEvent
 					observe(zero, nil, true)
 				}
 			case <-cancel:
@@ -606,6 +494,117 @@ func FromCallOp(slice ...CallOp) ObservableCallOp {
 	return observable
 }
 
+//jig:name JustCallOp
+
+// JustCallOp creates an ObservableCallOp that emits a particular item.
+func JustCallOp(element CallOp) ObservableCallOp {
+	observable := func(observe CallOpObserver, scheduler Scheduler, subscriber Subscriber) {
+		runner := scheduler.Schedule(func() {
+			if subscriber.Subscribed() {
+				observe(element, nil, false)
+			}
+			if subscriber.Subscribed() {
+				var zero CallOp
+				observe(zero, nil, true)
+			}
+		})
+		subscriber.OnUnsubscribe(runner.Cancel)
+	}
+	return observable
+}
+
+//jig:name CallOpSlice
+
+type CallOpSlice = []CallOp
+
+//jig:name ObservableObservableCallOp_CombineLatestAll
+
+// CombineLatestAll flattens a higher order observable
+// (e.g. ObservableObservableCallOp) by subscribing to
+// all emitted observables (ie. ObservableCallOp entries) until the source
+// completes. It will then wait for all of the subscribed ObservableCallOps
+// to emit before emitting the first slice. Whenever any of the subscribed
+// observables emits, a new slice will be emitted containing all the latest
+// value.
+func (o ObservableObservableCallOp) CombineLatestAll() ObservableCallOpSlice {
+	observable := func(observe CallOpSliceObserver, subscribeOn Scheduler, subscriber Subscriber) {
+		observables := []ObservableCallOp(nil)
+		var observers struct {
+			sync.Mutex
+			assigned	[]bool
+			values		[]CallOp
+			initialized	int
+			active		int
+		}
+		makeObserver := func(index int) CallOpObserver {
+			observer := func(next CallOp, err error, done bool) {
+				observers.Lock()
+				defer observers.Unlock()
+				if observers.active > 0 {
+					switch {
+					case !done:
+						if !observers.assigned[index] {
+							observers.assigned[index] = true
+							observers.initialized++
+						}
+						observers.values[index] = next
+						if observers.initialized == len(observers.values) {
+							observe(observers.values, nil, false)
+						}
+					case err != nil:
+						observers.active = 0
+						var zero []CallOp
+						observe(zero, err, true)
+					default:
+						if observers.active--; observers.active == 0 {
+							var zero []CallOp
+							observe(zero, nil, true)
+						}
+					}
+				}
+			}
+			return observer
+		}
+
+		observer := func(next ObservableCallOp, err error, done bool) {
+			switch {
+			case !done:
+				observables = append(observables, next)
+			case err != nil:
+				var zero []CallOp
+				observe(zero, err, true)
+			default:
+				subscribeOn.Schedule(func() {
+					if subscriber.Subscribed() {
+						numObservables := len(observables)
+						observers.assigned = make([]bool, numObservables)
+						observers.values = make([]CallOp, numObservables)
+						observers.active = numObservables
+						for i, v := range observables {
+							if !subscriber.Subscribed() {
+								return
+							}
+							v(makeObserver(i), subscribeOn, subscriber)
+						}
+					}
+				})
+			}
+		}
+		o(observer, subscribeOn, subscriber)
+	}
+	return observable
+}
+
+//jig:name CombineLatestCallOp
+
+// CombineLatest will subscribe to all ObservableCallOps. It will then wait for
+// all of them to emit before emitting the first slice. Whenever any of the
+// subscribed observables emits, a new slice will be emitted containing all
+// the latest value.
+func CombineLatestCallOp(observables ...ObservableCallOp) ObservableCallOpSlice {
+	return FromObservableCallOp(observables...).CombineLatestAll()
+}
+
 //jig:name DeferCallOp
 
 // DeferCallOp does not create the ObservableCallOp until the observer subscribes.
@@ -634,26 +633,30 @@ type CallOpSliceObserver func(next CallOpSlice, err error, done bool)
 // Calling it will subscribe the Observer to events from the Observable.
 type ObservableCallOpSlice func(CallOpSliceObserver, Scheduler, Subscriber)
 
-//jig:name DeferKeyEvent
+//jig:name EventObserver
 
-// DeferKeyEvent does not create the ObservableKeyEvent until the observer subscribes.
-// It creates a fresh ObservableKeyEvent for each subscribing observer. Use it to
-// create observables that maintain separate state per subscription.
-func DeferKeyEvent(factory func() ObservableKeyEvent) ObservableKeyEvent {
-	observable := func(observe KeyEventObserver, scheduler Scheduler, subscriber Subscriber) {
-		factory()(observe, scheduler, subscriber)
-	}
-	return observable
-}
+// EventObserver is a function that gets called whenever the Observable has
+// something to report. The next argument is the item value that is only
+// valid when the done argument is false. When done is true and the err
+// argument is not nil, then the Observable has terminated with an error.
+// When done is true and the err argument is nil, then the Observable has
+// completed normally.
+type EventObserver func(next event.Event, err error, done bool)
 
-//jig:name FromChanKeyEvent
+//jig:name ObservableEvent
 
-// FromChanKeyEvent creates an ObservableKeyEvent from a Go channel of KeyEvent values.
+// ObservableEvent is a function taking an Observer, Scheduler and Subscriber.
+// Calling it will subscribe the Observer to events from the Observable.
+type ObservableEvent func(EventObserver, Scheduler, Subscriber)
+
+//jig:name FromChanEvent
+
+// FromChanEvent creates an ObservableEvent from a Go channel of event.Event values.
 // It's not possible for the code feeding into the channel to send an error.
-// The feeding code can send nil or more KeyEvent items and then closing the
+// The feeding code can send nil or more event.Event items and then closing the
 // channel will be seen as completion.
-func FromChanKeyEvent(ch <-chan KeyEvent) ObservableKeyEvent {
-	observable := func(observe KeyEventObserver, scheduler Scheduler, subscriber Subscriber) {
+func FromChanEvent(ch <-chan event.Event) ObservableEvent {
+	observable := func(observe EventObserver, scheduler Scheduler, subscriber Subscriber) {
 		cancel := make(chan struct{})
 		runner := scheduler.ScheduleRecursive(func(self func()) {
 			if !subscriber.Subscribed() {
@@ -671,7 +674,7 @@ func FromChanKeyEvent(ch <-chan KeyEvent) ObservableKeyEvent {
 					}
 					self()
 				} else {
-					var zero KeyEvent
+					var zero event.Event
 					observe(zero, nil, true)
 				}
 			case <-cancel:
@@ -685,6 +688,10 @@ func FromChanKeyEvent(ch <-chan KeyEvent) ObservableKeyEvent {
 	}
 	return observable
 }
+
+//jig:name Slice
+
+type Slice = []interface{}
 
 //jig:name ObservableCallOpObserver
 
@@ -702,27 +709,55 @@ type ObservableCallOpObserver func(next ObservableCallOp, err error, done bool)
 // Calling it will subscribe the Observer to events from the Observable.
 type ObservableObservableCallOp func(ObservableCallOpObserver, Scheduler, Subscriber)
 
-//jig:name FromObservableCallOp
+//jig:name ObservableCallOp_CombineLatestWith
 
-// FromObservableCallOp creates an ObservableObservableCallOp from multiple ObservableCallOp values passed in.
-func FromObservableCallOp(slice ...ObservableCallOp) ObservableObservableCallOp {
-	observable := func(observe ObservableCallOpObserver, scheduler Scheduler, subscriber Subscriber) {
-		i := 0
-		runner := scheduler.ScheduleRecursive(func(self func()) {
-			if subscriber.Subscribed() {
-				if i < len(slice) {
-					observe(slice[i], nil, false)
-					if subscriber.Subscribed() {
-						i++
-						self()
-					}
-				} else {
-					var zero ObservableCallOp
-					observe(zero, nil, true)
-				}
+// CombineLatestWith will subscribe to its ObservableCallOp and all other
+// ObservableCallOps passed in. It will then wait for all of the ObservableBars
+// to emit before emitting the first slice. Whenever any of the subscribed
+// observables emits, a new slice will be emitted containing all the latest
+// value.
+func (o ObservableCallOp) CombineLatestWith(other ...ObservableCallOp) ObservableCallOpSlice {
+	return FromObservableCallOp(append([]ObservableCallOp{o}, other...)...).CombineLatestAll()
+}
+
+//jig:name ObservableFrameEvent_Subscribe
+
+// Subscribe operates upon the emissions and notifications from an Observable.
+// This method returns a Subscription.
+// Subscribe uses a trampoline scheduler created with scheduler.MakeTrampoline().
+func (o ObservableFrameEvent) Subscribe(observe FrameEventObserver, schedulers ...Scheduler) Subscription {
+	subscriber := subscriber.New()
+	schedulers = append(schedulers, scheduler.MakeTrampoline())
+	observer := func(next FrameEvent, err error, done bool) {
+		if !done {
+			observe(next, err, done)
+		} else {
+			var zero FrameEvent
+			observe(zero, err, true)
+			subscriber.Done(err)
+		}
+	}
+	if !schedulers[0].IsConcurrent() {
+		subscriber.OnWait(schedulers[0].Wait)
+	}
+	o(observer, schedulers[0], subscriber)
+	return subscriber
+}
+
+//jig:name ObservableCallOpSlice_MapCallOp
+
+// MapCallOp transforms the items emitted by an ObservableCallOpSlice by applying a
+// function to each item.
+func (o ObservableCallOpSlice) MapCallOp(project func(CallOpSlice) CallOp) ObservableCallOp {
+	observable := func(observe CallOpObserver, subscribeOn Scheduler, subscriber Subscriber) {
+		observer := func(next CallOpSlice, err error, done bool) {
+			var mapped CallOp
+			if !done {
+				mapped = project(next)
 			}
-		})
-		subscriber.OnUnsubscribe(runner.Cancel)
+			observe(mapped, err, done)
+		}
+		o(observer, subscribeOn, subscriber)
 	}
 	return observable
 }
@@ -821,55 +856,27 @@ func (o ObservableEvent) AsObservable() Observable {
 	return observable
 }
 
-//jig:name ObservableFrameEvent_Subscribe
+//jig:name FromObservableCallOp
 
-// Subscribe operates upon the emissions and notifications from an Observable.
-// This method returns a Subscription.
-// Subscribe uses a trampoline scheduler created with scheduler.MakeTrampoline().
-func (o ObservableFrameEvent) Subscribe(observe FrameEventObserver, schedulers ...Scheduler) Subscription {
-	subscriber := subscriber.New()
-	schedulers = append(schedulers, scheduler.MakeTrampoline())
-	observer := func(next FrameEvent, err error, done bool) {
-		if !done {
-			observe(next, err, done)
-		} else {
-			var zero FrameEvent
-			observe(zero, err, true)
-			subscriber.Done(err)
-		}
-	}
-	if !schedulers[0].IsConcurrent() {
-		subscriber.OnWait(schedulers[0].Wait)
-	}
-	o(observer, schedulers[0], subscriber)
-	return subscriber
-}
-
-//jig:name ObservableCallOp_CombineLatestWith
-
-// CombineLatestWith will subscribe to its ObservableCallOp and all other
-// ObservableCallOps passed in. It will then wait for all of the ObservableBars
-// to emit before emitting the first slice. Whenever any of the subscribed
-// observables emits, a new slice will be emitted containing all the latest
-// value.
-func (o ObservableCallOp) CombineLatestWith(other ...ObservableCallOp) ObservableCallOpSlice {
-	return FromObservableCallOp(append([]ObservableCallOp{o}, other...)...).CombineLatestAll()
-}
-
-//jig:name ObservableCallOpSlice_MapCallOp
-
-// MapCallOp transforms the items emitted by an ObservableCallOpSlice by applying a
-// function to each item.
-func (o ObservableCallOpSlice) MapCallOp(project func(CallOpSlice) CallOp) ObservableCallOp {
-	observable := func(observe CallOpObserver, subscribeOn Scheduler, subscriber Subscriber) {
-		observer := func(next CallOpSlice, err error, done bool) {
-			var mapped CallOp
-			if !done {
-				mapped = project(next)
+// FromObservableCallOp creates an ObservableObservableCallOp from multiple ObservableCallOp values passed in.
+func FromObservableCallOp(slice ...ObservableCallOp) ObservableObservableCallOp {
+	observable := func(observe ObservableCallOpObserver, scheduler Scheduler, subscriber Subscriber) {
+		i := 0
+		runner := scheduler.ScheduleRecursive(func(self func()) {
+			if subscriber.Subscribed() {
+				if i < len(slice) {
+					observe(slice[i], nil, false)
+					if subscriber.Subscribed() {
+						i++
+						self()
+					}
+				} else {
+					var zero ObservableCallOp
+					observe(zero, nil, true)
+				}
 			}
-			observe(mapped, err, done)
-		}
-		o(observer, subscribeOn, subscriber)
+		})
+		subscriber.OnUnsubscribe(runner.Cancel)
 	}
 	return observable
 }
@@ -1032,6 +1039,22 @@ func FromObservable(slice ...Observable) ObservableObservable {
 			}
 		})
 		subscriber.OnUnsubscribe(runner.Cancel)
+	}
+	return observable
+}
+
+//jig:name Observable_SubscribeOn
+
+// SubscribeOn specifies the scheduler an Observable should use when it is
+// subscribed to.
+func (o Observable) SubscribeOn(scheduler Scheduler) Observable {
+	observable := func(observe Observer, _ Scheduler, subscriber Subscriber) {
+		if scheduler.IsConcurrent() {
+			subscriber.OnWait(nil)
+		} else {
+			subscriber.OnWait(scheduler.Wait)
+		}
+		o(observe, scheduler, subscriber)
 	}
 	return observable
 }
