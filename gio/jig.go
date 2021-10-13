@@ -1,8 +1,10 @@
+//go:build ignore
 // +build ignore
 
 package gio
 
 import (
+	"gioui.org/op"
 	_ "github.com/reactivego/rx/generic"
 )
 
@@ -22,6 +24,7 @@ func generate_rx() {
 	// ObservableCallOp
 	{
 		FromCallOp()
+		JustCallOp(op.CallOp{})
 		CombineLatestCallOp()
 		DeferCallOp(nil)
 		var o ObservableCallOp
