@@ -40,7 +40,7 @@ func (w *Window) Frame(loading CallOp, layers ...ObservableCallOp) Subscription 
 		w.Invalidate()
 		return cos
 	}
-	content := CombineLatestCallOp(layers...).StartWith(launchScreen).Map(invalidate)
+	content := CombineLatestCallOp(layers...).StartWith(launchScreen).Map(invalidate).SubscribeOn(scheduler.Goroutine)
 
 	frames := FromChanEvent(w.Events()).AsObservable()
 
@@ -72,6 +72,6 @@ func (w *Window) Frame(loading CallOp, layers ...ObservableCallOp) Subscription 
 		default:
 			log.Printf("complete: %v\n", scheduler.Goroutine)
 		}
-	}, scheduler.Goroutine)
+	})
 	return subcription
 }
