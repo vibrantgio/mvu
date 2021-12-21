@@ -23,7 +23,7 @@ func main() {
 }
 
 func Hello() {
-	window := gio.NewWindow(app.Title("Vibrant: Hello"))
+	window := gio.NewWindow(app.Title("Vibrant - Hello"))
 
 	shaper := roboto.Shaper()
 
@@ -36,9 +36,7 @@ func Hello() {
 		print := func(r f32.Rectangle, txt string, ax, ay float32) op.CallOp {
 			ops := &op.Ops{}
 			m := op.Record(ops)
-			state := op.Save(ops)
 			text.Print(shaper, txt, r, ax, ay, 1000, roboto.H1.Scale(fe.Metric), colornames.DeepOrangeA100, ops)
-			state.Load()
 			return m.Stop()
 		}
 		return print(f32.Rect(0, 0, float32(fe.Size.X), float32(fe.Size.Y)), "Hello, World!", 0.5, 0.5)

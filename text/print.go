@@ -5,6 +5,7 @@ import (
 
 	"gioui.org/f32"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/text"
 	"golang.org/x/image/math/fixed"
@@ -22,14 +23,14 @@ func Print(shaper text.Shaper, txt string, r f32.Rectangle, ax, ay, maxWidth flo
 	nrgba := color.NRGBAModel.Convert(col).(color.NRGBA)
 	offset := f32.Pt(r.Min.X+ax*(r.Dx()-dx), r.Min.Y+ay*(r.Dy()-dy))
 	for _, line := range lines {
-		state := op.Save(ops)
 		offset.Y += float32(line.Ascent.Ceil())
-		op.Offset(offset).Add(ops)
+		tstack := op.Offset(offset).Push(ops)
 		offset.Y += float32(line.Descent.Ceil())
-		shaper.Shape(style.Font, fixed.I(style.Size), line.Layout).Add(ops)
+		cstack := clip.Outline{Path: shaper.Shape(style.Font, fixed.I(style.Size), line.Layout)}.Op().Push(ops)
 		paint.ColorOp{Color: nrgba}.Add(ops)
 		paint.PaintOp{}.Add(ops)
-		state.Load()
+		cstack.Pop()
+		tstack.Pop()
 	}
 	return dx, dy
 }
