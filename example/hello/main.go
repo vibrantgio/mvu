@@ -3,18 +3,15 @@ package main
 import (
 	"os"
 
-	"gioui.org/app"
-	"gioui.org/f32"
-	"gioui.org/op"
 	"golang.org/x/exp/shiny/materialdesign/colornames"
 
-	_ "github.com/reactivego/rx"
-	_ "github.com/reactivego/vibrant/gio/generic"
+	"gioui.org/app"
+	"gioui.org/op"
 
-	"github.com/reactivego/vibrant/gio"
-	"github.com/reactivego/vibrant/text"
-
-	roboto "github.com/reactivego/vibrant/roboto/italic"
+	rx "github.com/reactivego/observable"
+	"github.com/reactivego/vibrant"
+	"github.com/reactivego/vibrant/font/roboto"
+	"github.com/reactivego/vibrant/theme"
 )
 
 func main() {
@@ -23,25 +20,24 @@ func main() {
 }
 
 func Hello() {
-	window := gio.NewWindow(app.Title("Vibrant - Hello"))
+	window := vibrant.NewWindow(app.Title("Vibrant - Hello"))
 
-	shaper := roboto.Shaper()
-
-	frames := ExtendGioObservableFrameEvent(window.FrameEvents())
-	AliasGioObservableCallOp()
-
-	loading := gio.BlankScreen(colornames.BlueGrey600)
-	backdrop := gio.FromCallOp(loading)
-	caption := frames.MapCallOp(func(fe gio.FrameEvent) CallOp {
-		print := func(r f32.Rectangle, txt string, ax, ay float32) op.CallOp {
-			ops := &op.Ops{}
-			m := op.Record(ops)
-			text.Print(shaper, txt, r, ax, ay, 1000, roboto.H1.Scale(fe.Metric), colornames.DeepOrangeA100, ops)
-			return m.Stop()
-		}
-		return print(f32.Rect(0, 0, float32(fe.Size.X), float32(fe.Size.Y)), "Hello, World!", 0.5, 0.5)
+	drawing := rx.Defer(func() rx.Observable[op.CallOp] {
+		shaper := roboto.Shaper()
+		return rx.Map(window.Frame(), func(frame vibrant.Frame) op.CallOp {
+			h1 := theme.H1
+			rect := frame.SafeRect()
+			txt := "Hello, World!"
+			fill := colornames.Amber200
+			ops := new(op.Ops)
+			macro := op.Record(ops)
+			vibrant.Print(shaper, h1.Font, frame.Px(h1.Size), rect.Dx(), txt, rect, vibrant.Mid, vibrant.Mid, fill, ops)
+			return macro.Stop()
+		})
 	})
 
-	window.Frame(loading, backdrop, caption).Wait()
+	backdrop := vibrant.Backdrop(colornames.Grey600)
+
+	window.Render(backdrop, rx.Of(backdrop), drawing).Wait()
 	os.Exit(0)
 }

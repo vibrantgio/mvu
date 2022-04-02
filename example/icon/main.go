@@ -1,18 +1,22 @@
 package main
 
 import (
+	"image/color"
 	"os"
+	"time"
 
-	"gioui.org/app"
-	"gioui.org/f32"
 	"golang.org/x/exp/shiny/materialdesign/colornames"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 
-	icon "github.com/reactivego/ivg/raster/gio"
-	vibrant "github.com/reactivego/vibrant/gio"
+	"gioui.org/app"
+	"gioui.org/op"
+	"gioui.org/op/clip"
+	"gioui.org/op/paint"
+	"gioui.org/unit"
 
-	_ "github.com/reactivego/rx"
-	_ "github.com/reactivego/vibrant/gio/generic"
+	ivg "github.com/reactivego/ivg/raster/gio"
+	rx "github.com/reactivego/observable"
+	"github.com/reactivego/vibrant"
 )
 
 func main() {
@@ -20,24 +24,31 @@ func main() {
 	app.Main()
 }
 
-//jig:type Bytes = []byte
-
 func Icon() {
 	window := vibrant.NewWindow(app.Title("Vibrant - Icon"))
-	frames := ExtendGioObservableFrameEvent(window.FrameEvents())
-	AliasGioObservableCallOp()
+	frame := window.Frame()
 
-	grey600 := vibrant.BlankScreen(colornames.Grey600)
+	icons := rx.Map(rx.Timer[int](0, time.Second), func(i int) []byte {
+		return [...][]byte{icons.ActionEuroSymbol, icons.AVArtTrack, icons.ActionAlarm}[i%3]
+	})
 
-	icos := FromBytes(icons.ActionEuroSymbol, icons.AVArtTrack).SwitchMapCallOp(func(b []byte) vibrant.ObservableCallOp {
-		ico, _ := icon.NewIcon(b)
-		return frames.MapCallOp(func(fe FrameEvent) CallOp {
-			rect := ico.AspectMeet(f32.Rect(0, 0, float32(fe.Size.X), float32(fe.Size.Y)), 0.5, 0.5)
-			callop, _ := icon.Rasterize(ico, rect, icon.WithColors(colornames.Orange400))
-			return callop
+	drawing := rx.SwitchMap(icons, func(data []byte) rx.Observable[op.CallOp] {
+		icon, _ := ivg.NewIcon(data)
+		bg := color.NRGBAModel.Convert(colornames.Grey900).(color.NRGBA)
+		fg := colornames.Orange400
+		return rx.Map(frame, func(frame vibrant.Frame) op.CallOp {
+			rect := frame.SafeRect().Inset(frame.Px(unit.Dp(12)))
+			ops := new(op.Ops)
+			macro := op.Record(ops)
+			paint.FillShape(ops, bg, clip.Rect(rect).Op())
+			rect = icon.AspectMeet(rect.Size(), 0.5, 0.5).Add(rect.Min)
+			ivg.Draw(ops, icon, rect, fg)
+			return macro.Stop()
 		})
 	})
 
-	window.Frame(grey600, vibrant.FromCallOp(grey600), icos).Wait()
+	backdrop := vibrant.Backdrop(colornames.Grey600)
+
+	window.Render(backdrop, rx.Of(backdrop), drawing).Wait()
 	os.Exit(0)
 }
