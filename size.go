@@ -10,7 +10,7 @@ import (
 
 func Size(shaper text.Shaper, font text.Font, size, maxWidth int, txt string) image.Point {
 	var dx, dy int
-	for _, line := range shaper.LayoutString(font, fixed.I(size), maxWidth, txt) {
+	for _, line := range shaper.LayoutString(font, fixed.I(size), maxWidth, Locale, txt) {
 		dy += line.Ascent.Ceil()
 		if dx < line.Width.Ceil() {
 			dx = line.Width.Ceil()

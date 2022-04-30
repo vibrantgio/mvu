@@ -17,11 +17,9 @@ import (
 func Directory(name string) rx.Observable[fs.DirEntry] {
 	return rx.Defer(func() rx.Observable[fs.DirEntry] {
 		entries, err := os.ReadDir(name)
-		return rx.CreateRecursive(func() (fs.DirEntry, error, bool) {
-			if len(entries) > 0 {
-				next := entries[0]
-				entries = entries[1:]
-				return next, nil, false
+		return rx.Create(func(index int) (fs.DirEntry, error, bool) {
+			if index < len(entries) {
+				return entries[index], nil, false
 			} else {
 				var zero os.DirEntry
 				return zero, err, true
