@@ -8,7 +8,7 @@ require (
 	gioui.org/x v0.0.0-20220428201619-9f76c900b37a
 	github.com/fogleman/ease v0.0.0-20170301025033-8da417bf1776
 	github.com/reactivego/ivg v0.0.1
-	github.com/reactivego/observable v0.0.2
+	github.com/reactivego/observable v0.0.3
 	golang.org/x/exp/shiny v0.0.0-20220428152302-39d4317da171
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
 )
