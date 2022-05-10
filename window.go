@@ -85,12 +85,12 @@ func (window *Window) Render(launchscreen op.CallOp, layers ...rx.Observable[op.
 	pairs := rx.WithLatestFromPair(events, callops)
 	var ops op.Ops
 	main := func(next rx.Pair[event.Event, []op.CallOp], err error, done bool) {
-		ops.Reset()
 		switch {
 		case !done:
 			window.Handle(next.First)
 			switch event := next.First.(type) {
 			case system.FrameEvent:
+				ops.Reset()
 				for _, callop := range next.Second {
 					callop.Add(&ops)
 				}
