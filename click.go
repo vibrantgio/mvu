@@ -6,12 +6,13 @@ import (
 	"gioui.org/gesture"
 	"gioui.org/io/event"
 	"gioui.org/io/system"
-	rx "github.com/reactivego/observable"
+
+	"github.com/reactivego/x"
 )
 
-func ClickEvents(observable rx.Observable[Click]) rx.Observable[gesture.ClickEvent] {
-	return rx.SwitchMap(observable, func(click Click) rx.Observable[gesture.ClickEvent] {
-		return rx.From(click.Events()...)
+func ClickEvents(observable x.Observable[Click]) x.Observable[gesture.ClickEvent] {
+	return x.SwitchMap(observable, func(click Click) x.Observable[gesture.ClickEvent] {
+		return x.From(click.Events()...)
 	})
 }
 
@@ -21,8 +22,8 @@ type ClickState struct {
 	Events  []gesture.ClickEvent
 }
 
-func ClickStates(observable rx.Observable[Click]) rx.Observable[ClickState] {
-	return rx.Map(observable, func(click Click) ClickState {
+func ClickStates(observable x.Observable[Click]) x.Observable[ClickState] {
+	return x.Map(observable, func(click Click) ClickState {
 		events := click.Click.Events(click.Queue)
 		return ClickState{click.Hovered(), click.Pressed(), events}
 	})
@@ -37,14 +38,14 @@ func (c Click) Events() []gesture.ClickEvent {
 	return c.Click.Events(c.Queue)
 }
 
-func (window *Window) Click() rx.Observable[Click] {
+func (window *Window) Click() x.Observable[Click] {
 	click := struct {
 		sync.Mutex
 		Map map[*gesture.Click][]event.Event
 	}{Map: make(map[*gesture.Click][]event.Event)}
-	return func(observe rx.Observer[Click], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Click], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Click](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Click](x.FromChan(channel))(observe, scheduler, subscriber)
 		tag := new(gesture.Click)
 		channel <- Click{Click: tag, Queue: EventQueue([]event.Event{})}
 		click.Lock()

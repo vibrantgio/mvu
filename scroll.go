@@ -11,7 +11,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 
-	rx "github.com/reactivego/observable"
+	"github.com/reactivego/x"
 )
 
 type Scroll struct {
@@ -44,14 +44,14 @@ func (s *Scroll) State() gesture.ScrollState {
 	return s.Scroll.State()
 }
 
-func (window *Window) Scroll() rx.Observable[Scroll] {
+func (window *Window) Scroll() x.Observable[Scroll] {
 	scroll := struct {
 		sync.Mutex
 		Map map[*gesture.Scroll][]event.Event
 	}{Map: make(map[*gesture.Scroll][]event.Event)}
-	return func(observe rx.Observer[Scroll], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Scroll], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Scroll](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Scroll](x.FromChan(channel))(observe, scheduler, subscriber)
 		tag := new(gesture.Scroll)
 		channel <- Scroll{Scroll: tag, Queue: EventQueue([]event.Event{})}
 		scroll.Lock()

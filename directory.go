@@ -4,7 +4,7 @@ import (
 	"io/fs"
 	"os"
 
-	rx "github.com/reactivego/observable"
+	"github.com/reactivego/x"
 )
 
 // Directory returns an observable of fs.DirEntry that will emit entries
@@ -14,10 +14,10 @@ import (
 //		datadir, _ := app.DataDir()
 //		vibrant.Directory(path.Join(datadir, "nl.simpleapps", "AppViz")).Println()
 //
-func Directory(name string) rx.Observable[fs.DirEntry] {
-	return rx.Defer(func() rx.Observable[fs.DirEntry] {
+func Directory(name string) x.Observable[fs.DirEntry] {
+	return x.Defer(func() x.Observable[fs.DirEntry] {
 		entries, err := os.ReadDir(name)
-		return rx.Create(func(index int) (fs.DirEntry, error, bool) {
+		return x.Create(func(index int) (fs.DirEntry, error, bool) {
 			if index < len(entries) {
 				return entries[index], nil, false
 			} else {

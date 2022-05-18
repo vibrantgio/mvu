@@ -8,10 +8,10 @@ import (
 	"gioui.org/app"
 	"gioui.org/op"
 
-	rx "github.com/reactivego/observable"
 	"github.com/reactivego/vibrant"
 	"github.com/reactivego/vibrant/font/roboto"
 	"github.com/reactivego/vibrant/theme"
+	"github.com/reactivego/x"
 )
 
 func main() {
@@ -22,9 +22,9 @@ func main() {
 func Hello() {
 	window := vibrant.NewWindow(app.Title("Vibrant - Hello"))
 
-	drawing := rx.Defer(func() rx.Observable[op.CallOp] {
+	drawing := x.Defer(func() x.Observable[op.CallOp] {
 		shaper := roboto.Shaper()
-		return rx.Map(window.Frame(), func(frame vibrant.Frame) op.CallOp {
+		return x.Map(window.Frame(), func(frame vibrant.Frame) op.CallOp {
 			h1 := theme.H1
 			rect := frame.SafeRect()
 			txt := "Hello, World!"
@@ -38,6 +38,6 @@ func Hello() {
 
 	backdrop := vibrant.Backdrop(colornames.Grey600)
 
-	window.Render(backdrop, rx.Of(backdrop), drawing).Wait()
+	window.Render(backdrop, x.Of(backdrop), drawing).Wait()
 	os.Exit(0)
 }

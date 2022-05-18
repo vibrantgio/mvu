@@ -7,24 +7,25 @@ import (
 	"gioui.org/io/key"
 	"gioui.org/io/system"
 	"gioui.org/op"
-	rx "github.com/reactivego/observable"
+
+	"github.com/reactivego/x"
 )
 
-func KeyEvents(observable rx.Observable[Input]) rx.Observable[key.Event] {
-	return rx.SwitchMap(observable, func(input Input) rx.Observable[key.Event] {
-		return rx.From(input.KeyEvents()...)
+func KeyEvents(observable x.Observable[Input]) x.Observable[key.Event] {
+	return x.SwitchMap(observable, func(input Input) x.Observable[key.Event] {
+		return x.From(input.KeyEvents()...)
 	})
 }
 
-func EditEvents(observable rx.Observable[Input]) rx.Observable[key.EditEvent] {
-	return rx.SwitchMap(observable, func(input Input) rx.Observable[key.EditEvent] {
-		return rx.From(input.EditEvents()...)
+func EditEvents(observable x.Observable[Input]) x.Observable[key.EditEvent] {
+	return x.SwitchMap(observable, func(input Input) x.Observable[key.EditEvent] {
+		return x.From(input.EditEvents()...)
 	})
 }
 
-func FocusEvents(observable rx.Observable[Input]) rx.Observable[key.FocusEvent] {
-	return rx.SwitchMap(observable, func(input Input) rx.Observable[key.FocusEvent] {
-		return rx.From(input.FocusEvents()...)
+func FocusEvents(observable x.Observable[Input]) x.Observable[key.FocusEvent] {
+	return x.SwitchMap(observable, func(input Input) x.Observable[key.FocusEvent] {
+		return x.From(input.FocusEvents()...)
 	})
 }
 
@@ -93,14 +94,14 @@ func (i Input) FocusEvents() []key.FocusEvent {
 	return events
 }
 
-func (window *Window) Input() rx.Observable[Input] {
+func (window *Window) Input() x.Observable[Input] {
 	input := struct {
 		sync.Mutex
 		Map map[event.Tag][]event.Event
 	}{Map: make(map[event.Tag][]event.Event)}
-	return func(observe rx.Observer[Input], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Input], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Input](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Input](x.FromChan(channel))(observe, scheduler, subscriber)
 		tag := Tag()
 		channel <- Input{Tag: tag, Queue: EventQueue([]event.Event{})}
 		input.Lock()

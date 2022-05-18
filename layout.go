@@ -6,13 +6,13 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 
-	rx "github.com/reactivego/observable"
+	"github.com/reactivego/x"
 )
 
 type Context = layout.Context
 
-func (window *Window) Layout() rx.Observable[Context] {
-	return func(observe rx.Observer[Context], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+func (window *Window) Layout() x.Observable[Context] {
+	return func(observe x.Observer[Context], scheduler x.Scheduler, subscriber x.Subscriber) {
 		ops := new(op.Ops)
 		observer := func(next event.Event, err error, done bool) {
 			switch {

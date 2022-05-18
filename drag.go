@@ -8,12 +8,13 @@ import (
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/unit"
-	rx "github.com/reactivego/observable"
+
+	"github.com/reactivego/x"
 )
 
-func DragEvents(observable rx.Observable[Drag], cfg unit.Metric, axis gesture.Axis) rx.Observable[pointer.Event] {
-	return rx.SwitchMap(observable, func(drag Drag) rx.Observable[pointer.Event] {
-		return rx.From(drag.Events(cfg, axis)...)
+func DragEvents(observable x.Observable[Drag], cfg unit.Metric, axis gesture.Axis) x.Observable[pointer.Event] {
+	return x.SwitchMap(observable, func(drag Drag) x.Observable[pointer.Event] {
+		return x.From(drag.Events(cfg, axis)...)
 	})
 }
 
@@ -23,8 +24,8 @@ type DragState struct {
 	Events   []pointer.Event
 }
 
-func DragStates(observable rx.Observable[Drag], cfg unit.Metric, axis gesture.Axis) rx.Observable[DragState] {
-	return rx.Map(observable, func(drag Drag) DragState {
+func DragStates(observable x.Observable[Drag], cfg unit.Metric, axis gesture.Axis) x.Observable[DragState] {
+	return x.Map(observable, func(drag Drag) DragState {
 		events := drag.Drag.Events(cfg, drag.Queue, axis)
 		return DragState{drag.Dragging(), drag.Pressed(), events}
 	})
@@ -39,14 +40,14 @@ func (c Drag) Events(cfg unit.Metric, axis gesture.Axis) []pointer.Event {
 	return c.Drag.Events(cfg, c.Queue, axis)
 }
 
-func (window *Window) Drag() rx.Observable[Drag] {
+func (window *Window) Drag() x.Observable[Drag] {
 	drag := struct {
 		sync.Mutex
 		Map map[*gesture.Drag][]event.Event
 	}{Map: make(map[*gesture.Drag][]event.Event)}
-	return func(observe rx.Observer[Drag], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Drag], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Drag](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Drag](x.FromChan(channel))(observe, scheduler, subscriber)
 		tag := new(gesture.Drag)
 		channel <- Drag{Drag: tag, Queue: EventQueue([]event.Event{})}
 		drag.Lock()

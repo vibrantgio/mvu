@@ -7,7 +7,8 @@ import (
 	"gioui.org/io/event"
 	"gioui.org/io/system"
 	"gioui.org/op"
-	rx "github.com/reactivego/observable"
+
+	"github.com/reactivego/x"
 )
 
 type Hover struct {
@@ -25,14 +26,14 @@ func (c Hover) Hovered() bool {
 	return c.Hover.Hovered(c.Queue)
 }
 
-func (window *Window) Hover() rx.Observable[Hover] {
+func (window *Window) Hover() x.Observable[Hover] {
 	hover := struct {
 		sync.Mutex
 		Map map[*gesture.Hover][]event.Event
 	}{Map: make(map[*gesture.Hover][]event.Event)}
-	return func(observe rx.Observer[Hover], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Hover], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Hover](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Hover](x.FromChan(channel))(observe, scheduler, subscriber)
 		tag := new(gesture.Hover)
 		channel <- Hover{Hover: tag, Queue: EventQueue([]event.Event{})}
 		hover.Lock()

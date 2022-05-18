@@ -2,10 +2,11 @@ package vibrant
 
 import (
 	"gioui.org/io/event"
-	rx "github.com/reactivego/observable"
+
+	"github.com/reactivego/x"
 )
 
-type EventHandler struct{ observe rx.Observer[event.Event] }
+type EventHandler struct{ observe x.Observer[event.Event] }
 
 func (handler EventHandler) Handle(event event.Event) {
 	handler.observe(event, nil, false)

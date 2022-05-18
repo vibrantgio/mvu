@@ -15,8 +15,8 @@ import (
 	"gioui.org/unit"
 
 	ivg "github.com/reactivego/ivg/raster/gio"
-	rx "github.com/reactivego/observable"
 	"github.com/reactivego/vibrant"
+	"github.com/reactivego/x"
 )
 
 func main() {
@@ -28,15 +28,15 @@ func Icon() {
 	window := vibrant.NewWindow(app.Title("Vibrant - Icon"))
 	frame := window.Frame()
 
-	icons := rx.Map(rx.Timer[int](0, time.Second), func(i int) []byte {
+	icons := x.Map(x.Timer[int](0, time.Second), func(i int) []byte {
 		return [...][]byte{icons.ActionEuroSymbol, icons.AVArtTrack, icons.ActionAlarm}[i%3]
 	})
 
-	drawing := rx.SwitchMap(icons, func(data []byte) rx.Observable[op.CallOp] {
+	drawing := x.SwitchMap(icons, func(data []byte) x.Observable[op.CallOp] {
 		icon, _ := ivg.NewIcon(data)
 		bg := color.NRGBAModel.Convert(colornames.Grey900).(color.NRGBA)
 		fg := colornames.Orange400
-		return rx.Map(frame, func(frame vibrant.Frame) op.CallOp {
+		return x.Map(frame, func(frame vibrant.Frame) op.CallOp {
 			rect := frame.SafeRect().Inset(frame.Px(unit.Dp(12)))
 			ops := new(op.Ops)
 			macro := op.Record(ops)
@@ -49,6 +49,6 @@ func Icon() {
 
 	backdrop := vibrant.Backdrop(colornames.Grey600)
 
-	window.Render(backdrop, rx.Of(backdrop), drawing).Wait()
+	window.Render(backdrop, x.Of(backdrop), drawing).Wait()
 	os.Exit(0)
 }

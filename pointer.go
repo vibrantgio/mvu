@@ -7,12 +7,13 @@ import (
 	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/op"
-	rx "github.com/reactivego/observable"
+
+	"github.com/reactivego/x"
 )
 
-func PointerEvents(observable rx.Observable[Pointer]) rx.Observable[pointer.Event] {
-	return rx.SwitchMap(observable, func(pointer Pointer) rx.Observable[pointer.Event] {
-		return rx.From(pointer.Events()...)
+func PointerEvents(observable x.Observable[Pointer]) x.Observable[pointer.Event] {
+	return x.SwitchMap(observable, func(pointer Pointer) x.Observable[pointer.Event] {
+		return x.From(pointer.Events()...)
 	})
 }
 
@@ -35,14 +36,14 @@ func (p Pointer) Events() []pointer.Event {
 	return events
 }
 
-func (window *Window) Pointer() rx.Observable[Pointer] {
+func (window *Window) Pointer() x.Observable[Pointer] {
 	pointer := struct {
 		sync.Mutex
 		Map map[event.Tag][]event.Event
 	}{Map: make(map[event.Tag][]event.Event)}
-	return func(observe rx.Observer[Pointer], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Pointer], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Pointer](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Pointer](x.FromChan(channel))(observe, scheduler, subscriber)
 		tag := Tag()
 		channel <- Pointer{Tag: tag, Queue: EventQueue([]event.Event{})}
 		pointer.Lock()

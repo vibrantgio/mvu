@@ -9,7 +9,7 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/unit"
 
-	rx "github.com/reactivego/observable"
+	"github.com/reactivego/x"
 )
 
 type Frame struct {
@@ -30,7 +30,7 @@ func (c Frame) DistinctFrom(f system.FrameEvent) bool {
 	return c.Size != f.Size || c.Metric != f.Metric || c.Insets != f.Insets
 }
 
-func (window *Window) Frame() rx.Observable[Frame] {
+func (window *Window) Frame() x.Observable[Frame] {
 	var shared struct {
 		sync.Mutex
 		Frame
@@ -52,9 +52,9 @@ func (window *Window) Frame() rx.Observable[Frame] {
 		}
 		return shared.Frame, shared.Count
 	}
-	return func(observe rx.Observer[Frame], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+	return func(observe x.Observer[Frame], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
-		rx.AsObservable[Frame](rx.FromChan(channel))(observe, scheduler, subscriber)
+		x.AsObservable[Frame](x.FromChan(channel))(observe, scheduler, subscriber)
 		frame, mycount := update(nil)
 		channel <- frame
 		observer := func(next event.Event, err error, done bool) {
