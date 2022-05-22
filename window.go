@@ -106,14 +106,16 @@ func (window *Window) Render(launchscreen op.CallOp, layers ...x.Observable[op.C
 				}
 				event.Frame(&ops)
 			case system.DestroyEvent:
-				// log.Printf("destroy: %v\n", event.Err)
+				if event.Err != nil {
+					log.Printf("destroy: %v\n", event.Err)
+				}
 			case pointer.Event:
 				// log.Printf("pointer: %v\n", event)
 			default:
 				// log.Printf("event: %#v\n", event)
 			}
 		case err != nil:
-			// log.Printf("error: %v\n", err)
+			log.Printf("error: %v\n", err)
 		default:
 			// log.Println("complete")
 			window.Handle(nil)
