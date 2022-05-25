@@ -22,7 +22,7 @@ const (
 
 var Locale = system.Locale{Language: "en-US", Direction: system.LTR}
 
-func Print(shaper text.Shaper, font text.Font, size, maxWidth int, txt string, rect image.Rectangle, ax, ay float32, textColor color.Color, ops *op.Ops) image.Point {
+func Text(ops *op.Ops, shaper text.Shaper, font text.Font, size, maxWidth int, txt string, rect image.Rectangle, ax, ay float32, textColor color.Color) image.Point {
 	var dx, dy int
 	lines := shaper.LayoutString(font, fixed.I(size), maxWidth, Locale, txt)
 	for _, line := range lines {
