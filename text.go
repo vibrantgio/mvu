@@ -33,14 +33,14 @@ func Text(ops *op.Ops, shaper text.Shaper, font text.Font, size, maxWidth int, t
 		dy += line.Descent.Ceil()
 	}
 	fill := color.NRGBAModel.Convert(textColor).(color.NRGBA)
-	px, py := rect.Min.X+int(ax*float32(rect.Dx()-dx)), rect.Min.Y+int(ay*float32(rect.Dy()-dy))
+	px, py := float32(rect.Min.X)+ax*float32(rect.Dx()-dx), float32(rect.Min.Y)+ay*float32(rect.Dy()-dy)
 	for _, line := range lines {
 		shape := clip.Outline{Path: shaper.Shape(font, fixed.I(size), line.Layout)}.Op()
-		py += line.Ascent.Ceil()
-		tstack := op.Offset(f32.Pt(float32(px), float32(py))).Push(ops)
+		py += float32(line.Ascent.Ceil())
+		tstack := op.Offset(f32.Pt(px, py)).Push(ops)
 		paint.FillShape(ops, fill, shape)
 		tstack.Pop()
-		py += line.Descent.Ceil()
+		py += float32(line.Descent.Ceil())
 	}
 	return image.Pt(dx, dy)
 }

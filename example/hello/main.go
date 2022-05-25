@@ -31,7 +31,7 @@ func Hello() {
 			fill := colornames.Amber200
 			ops := new(op.Ops)
 			macro := op.Record(ops)
-			vibrant.Print(shaper, h1.Font, frame.Px(h1.Size), rect.Dx(), txt, rect, vibrant.Mid, vibrant.Mid, fill, ops)
+			vibrant.Text(ops, shaper, h1.Font, frame.Px(h1.Size), rect.Dx(), txt, rect, vibrant.Mid, vibrant.Mid, fill)
 			return macro.Stop()
 		})
 	})
