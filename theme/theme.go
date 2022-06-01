@@ -8,7 +8,7 @@ import (
 
 type TextStyle struct {
 	Font text.Font
-	Size unit.Value
+	Size unit.Sp
 }
 
 var (

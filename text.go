@@ -6,7 +6,6 @@ import (
 
 	"golang.org/x/image/math/fixed"
 
-	"gioui.org/f32"
 	"gioui.org/io/system"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -22,8 +21,7 @@ const (
 
 var Locale = system.Locale{Language: "en-US", Direction: system.LTR}
 
-func Text(ops *op.Ops, shaper text.Shaper, font text.Font, size, maxWidth int, txt string, rect image.Rectangle, ax, ay float32, textColor color.Color) image.Point {
-	var dx, dy int
+func Text(ops *op.Ops, rect image.Rectangle, ax, ay float32, shaper text.Shaper, font text.Font, size, maxWidth int, textColor color.Color, txt string) (dx, dy int) {
 	lines := shaper.LayoutString(font, fixed.I(size), maxWidth, Locale, txt)
 	for _, line := range lines {
 		dy += line.Ascent.Ceil()
@@ -32,15 +30,15 @@ func Text(ops *op.Ops, shaper text.Shaper, font text.Font, size, maxWidth int, t
 		}
 		dy += line.Descent.Ceil()
 	}
-	fill := color.NRGBAModel.Convert(textColor).(color.NRGBA)
-	px, py := float32(rect.Min.X)+ax*float32(rect.Dx()-dx), float32(rect.Min.Y)+ay*float32(rect.Dy()-dy)
+	c := color.NRGBAModel.Convert(textColor).(color.NRGBA)
+	offset := rect.Min.Add(image.Pt(int(ax*float32(rect.Dx()-dx)), int(ay*float32(rect.Dy()-dy))))
 	for _, line := range lines {
 		shape := clip.Outline{Path: shaper.Shape(font, fixed.I(size), line.Layout)}.Op()
-		py += float32(line.Ascent.Ceil())
-		tstack := op.Offset(f32.Pt(px, py)).Push(ops)
-		paint.FillShape(ops, fill, shape)
+		offset.Y += line.Ascent.Ceil()
+		tstack := op.Offset(offset).Push(ops)
+		paint.FillShape(ops, c, shape)
 		tstack.Pop()
-		py += float32(line.Descent.Ceil())
+		offset.Y += line.Descent.Ceil()
 	}
-	return image.Pt(dx, dy)
+	return
 }

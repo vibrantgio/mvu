@@ -20,10 +20,10 @@ type Frame struct {
 
 func (c Frame) SafeRect() image.Rectangle {
 	return image.Rect(
-		c.Px(c.Left),
-		c.Px(c.Top),
-		c.Size.X-c.Px(c.Right),
-		c.Size.Y-c.Px(c.Bottom))
+		c.Dp(c.Left),
+		c.Dp(c.Top),
+		c.Size.X-c.Dp(c.Right),
+		c.Size.Y-c.Dp(c.Bottom))
 }
 
 func (c Frame) DistinctFrom(f system.FrameEvent) bool {

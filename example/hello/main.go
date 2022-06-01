@@ -27,11 +27,11 @@ func Hello() {
 		return x.Map(window.Frame(), func(frame vibrant.Frame) op.CallOp {
 			h1 := theme.H1
 			rect := frame.SafeRect()
-			txt := "Hello, World!"
 			fill := colornames.Amber200
+			txt := "Hello, World!"
 			ops := new(op.Ops)
 			macro := op.Record(ops)
-			vibrant.Text(ops, shaper, h1.Font, frame.Px(h1.Size), rect.Dx(), txt, rect, vibrant.Mid, vibrant.Mid, fill)
+			vibrant.Text(ops, rect, vibrant.Mid, vibrant.Mid, shaper, h1.Font, frame.Sp(h1.Size), rect.Dx(), fill, txt)
 			return macro.Stop()
 		})
 	})

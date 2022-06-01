@@ -14,7 +14,7 @@ import (
 	"gioui.org/op/paint"
 	"gioui.org/unit"
 
-	ivg "github.com/reactivego/ivg/raster/gio"
+	"github.com/reactivego/ivg/raster/gio"
 	"github.com/reactivego/vibrant"
 	"github.com/reactivego/x"
 )
@@ -33,16 +33,16 @@ func Icon() {
 	})
 
 	drawing := x.SwitchMap(icons, func(data []byte) x.Observable[op.CallOp] {
-		icon, _ := ivg.NewIcon(data)
+		icon, _ := gio.NewIcon(data)
 		bg := color.NRGBAModel.Convert(colornames.Grey900).(color.NRGBA)
 		fg := colornames.Orange400
 		return x.Map(frame, func(frame vibrant.Frame) op.CallOp {
-			rect := frame.SafeRect().Inset(frame.Px(unit.Dp(12)))
+			rect := frame.SafeRect().Inset(frame.Dp(unit.Dp(12)))
 			ops := new(op.Ops)
 			macro := op.Record(ops)
 			paint.FillShape(ops, bg, clip.Rect(rect).Op())
 			rect = icon.AspectMeet(rect.Size(), 0.5, 0.5).Add(rect.Min)
-			ivg.Draw(ops, icon, rect, fg)
+			gio.Draw(ops, icon, rect, fg)
 			return macro.Stop()
 		})
 	})
