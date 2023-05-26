@@ -26,7 +26,7 @@ type DragState struct {
 
 func DragStates(observable x.Observable[Drag], cfg unit.Metric, axis gesture.Axis) x.Observable[DragState] {
 	return x.Map(observable, func(drag Drag) DragState {
-		events := drag.Drag.Events(cfg, drag.Queue, axis)
+		events := drag.Events(cfg, axis)
 		return DragState{drag.Dragging(), drag.Pressed(), events}
 	})
 }
@@ -53,43 +53,33 @@ func (window *Window) Drag() x.Observable[Drag] {
 		drag.Lock()
 		drag.Map[tag] = nil
 		drag.Unlock()
-		observer := func(next event.Event, err error, done bool) {
-			switch {
-			case !done:
-				if frame, ok := next.(system.FrameEvent); ok {
-					var events []event.Event
-					for k := range drag.Map {
-						events = append(events, frame.Queue.Events(k)...)
-					}
-					if n := len(events); n > 0 {
-						for k := range drag.Map {
-							drag.Map[k] = events
-						}
-					}
-					if subscriber.Subscribed() {
-						if events := drag.Map[tag]; events != nil {
-							select {
-							case channel <- Drag{Drag: tag, Queue: EventQueue(events)}:
-								drag.Map[tag] = nil
-							default:
-								panic("Drag: Channel Overflow")
-							}
-						}
-					}
-				}
-			case err != nil:
-				select {
-				case channel <- err:
-					// OK
-				default:
-					panic("Drag: Channel Overflow")
-				}
-				close(channel) // currently unable to forward an error
-			case err == nil:
+		handler := NewHandler(func(next event.Event, done bool) {
+			if done {
 				close(channel)
+				return
 			}
-		}
-		handler := &EventHandler{observer}
+			if frame, ok := next.(system.FrameEvent); ok {
+				var all []event.Event
+				for k := range drag.Map {
+					all = append(all, frame.Queue.Events(k)...)
+				}
+				if n := len(all); n > 0 {
+					for k := range drag.Map {
+						drag.Map[k] = all
+					}
+				}
+				if subscriber.Subscribed() {
+					if events := drag.Map[tag]; events != nil {
+						select {
+						case channel <- Drag{Drag: tag, Queue: EventQueue(events)}:
+							drag.Map[tag] = nil
+						default:
+							panic("Drag: Channel Overflow")
+						}
+					}
+				}
+			}
+		})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

@@ -1,14 +1,12 @@
 package vibrant
 
 import (
-	"image"
 	"sync"
 	"time"
 
 	"gioui.org/gesture"
 	"gioui.org/io/event"
 	"gioui.org/io/system"
-	"gioui.org/op"
 	"gioui.org/unit"
 
 	"github.com/reactivego/x"
@@ -17,31 +15,11 @@ import (
 type Scroll struct {
 	*gesture.Scroll
 	event.Queue
-	unit.Metric
-	system.Insets
 }
 
-// Add the handler to the operation list to receive scroll events.
-// The bounds variable refers to the scrolling boundaries
-// as defined in io/pointer.InputOp.
-func (s *Scroll) Add(ops *op.Ops, bounds image.Rectangle) {
-	s.Scroll.Add(ops, bounds)
-}
-
-// Stop any remaining fling movement.
-func (s *Scroll) Stop() {
-	s.Scroll.Stop()
-}
-
-// Scroll detects the scrolling distance from the available events and
-// ongoing fling gestures.
+// Distance detects the scrolling distance from the available events and ongoing fling gestures.
 func (s Scroll) Distance(cfg unit.Metric, t time.Time, axis gesture.Axis) int {
 	return s.Scroll.Scroll(cfg, s.Queue, t, axis)
-}
-
-// State reports the scroll state.
-func (s *Scroll) State() gesture.ScrollState {
-	return s.Scroll.State()
 }
 
 func (window *Window) Scroll() x.Observable[Scroll] {
@@ -57,43 +35,33 @@ func (window *Window) Scroll() x.Observable[Scroll] {
 		scroll.Lock()
 		scroll.Map[tag] = nil
 		scroll.Unlock()
-		observer := func(next event.Event, err error, done bool) {
-			switch {
-			case !done:
-				if frame, ok := next.(system.FrameEvent); ok {
-					var events []event.Event
-					for k := range scroll.Map {
-						events = append(events, frame.Queue.Events(k)...)
-					}
-					if n := len(events); n > 0 {
-						for k := range scroll.Map {
-							scroll.Map[k] = events
-						}
-					}
-					if subscriber.Subscribed() {
-						if events := scroll.Map[tag]; events != nil {
-							select {
-							case channel <- Scroll{Scroll: tag, Queue: EventQueue(events), Metric: frame.Metric, Insets: frame.Insets}:
-								scroll.Map[tag] = nil
-							default:
-								panic("Scroll: Channel Overflow")
-							}
-						}
-					}
-				}
-			case err != nil:
-				select {
-				case channel <- err:
-					// OK
-				default:
-					panic("Scroll: Channel Overflow")
-				}
-				close(channel) // currently unable to forward an error
-			case err == nil:
+		handler := NewHandler(func(next event.Event, done bool) {
+			if done {
 				close(channel)
+				return
 			}
-		}
-		handler := &EventHandler{observer}
+			if frame, ok := next.(system.FrameEvent); ok {
+				var all []event.Event
+				for k := range scroll.Map {
+					all = append(all, frame.Queue.Events(k)...)
+				}
+				if n := len(all); n > 0 {
+					for k := range scroll.Map {
+						scroll.Map[k] = all
+					}
+				}
+				if subscriber.Subscribed() {
+					if events := scroll.Map[tag]; events != nil {
+						select {
+						case channel <- Scroll{Scroll: tag, Queue: EventQueue(events)}:
+							scroll.Map[tag] = nil
+						default:
+							panic("Scroll: Channel Overflow")
+						}
+					}
+				}
+			}
+		})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

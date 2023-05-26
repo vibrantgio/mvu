@@ -6,7 +6,6 @@ import (
 	"gioui.org/gesture"
 	"gioui.org/io/event"
 	"gioui.org/io/system"
-	"gioui.org/op"
 
 	"github.com/reactivego/x"
 )
@@ -14,11 +13,6 @@ import (
 type Hover struct {
 	*gesture.Hover
 	event.Queue
-}
-
-// Add the gesture to detect hovering over the current pointer area.
-func (h *Hover) Add(ops *op.Ops) {
-	h.Hover.Add(ops)
 }
 
 // Hovered returns whether a pointer is inside the area.
@@ -39,43 +33,33 @@ func (window *Window) Hover() x.Observable[Hover] {
 		hover.Lock()
 		hover.Map[tag] = nil
 		hover.Unlock()
-		observer := func(next event.Event, err error, done bool) {
-			switch {
-			case !done:
-				if frame, ok := next.(system.FrameEvent); ok {
-					var events []event.Event
-					for k := range hover.Map {
-						events = append(events, frame.Queue.Events(k)...)
-					}
-					if n := len(events); n > 0 {
-						for k := range hover.Map {
-							hover.Map[k] = events
-						}
-					}
-					if subscriber.Subscribed() {
-						if events := hover.Map[tag]; events != nil {
-							select {
-							case channel <- Hover{Hover: tag, Queue: EventQueue(events)}:
-								hover.Map[tag] = nil
-							default:
-								panic("Hover: Channel Overflow")
-							}
-						}
-					}
-				}
-			case err != nil:
-				select {
-				case channel <- err:
-					// OK
-				default:
-					panic("Hover: Channel Overflow")
-				}
-				close(channel) // currently unable to forward an error
-			case err == nil:
+		handler := NewHandler(func(next event.Event, done bool) {
+			if done {
 				close(channel)
+				return
 			}
-		}
-		handler := &EventHandler{observer}
+			if frame, ok := next.(system.FrameEvent); ok {
+				var all []event.Event
+				for k := range hover.Map {
+					all = append(all, frame.Queue.Events(k)...)
+				}
+				if n := len(all); n > 0 {
+					for k := range hover.Map {
+						hover.Map[k] = all
+					}
+				}
+				if subscriber.Subscribed() {
+					if events := hover.Map[tag]; events != nil {
+						select {
+						case channel <- Hover{Hover: tag, Queue: EventQueue(events)}:
+							hover.Map[tag] = nil
+						default:
+							panic("Hover: Channel Overflow")
+						}
+					}
+				}
+			}
+		})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

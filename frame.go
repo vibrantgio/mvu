@@ -26,10 +26,10 @@ func (c Frame) SafeRect() image.Rectangle {
 		c.Size.Y-c.Dp(c.Bottom))
 }
 
-func (c Frame) DistinctFrom(f system.FrameEvent) bool {
-	return c.Size != f.Size || c.Metric != f.Metric || c.Insets != f.Insets
-}
-
+// Frame returns an observable that emits the current frame of the window.
+// The frame is emitted whenever the window is resized or the system insets
+// change or when the metrics change.
+// For new subscribers, the current frame is emitted immediately.
 func (window *Window) Frame() x.Observable[Frame] {
 	var shared struct {
 		sync.Mutex
@@ -39,13 +39,14 @@ func (window *Window) Frame() x.Observable[Frame] {
 	update := func(next event.Event) (Frame, int) {
 		shared.Lock()
 		defer shared.Unlock()
-		if event, ok := next.(app.ConfigEvent); ok {
+		switch event := next.(type) {
+		case app.ConfigEvent:
+			event.Config.Size = shared.Size
 			shared.Config = event.Config
-			shared.Metric = unit.Metric{}
-		} else if event, ok := next.(system.FrameEvent); ok {
-			if shared.DistinctFrom(event) {
-				shared.Size = event.Size
+		case system.FrameEvent:
+			if shared.Metric != event.Metric || shared.Size != event.Size || shared.Insets != event.Insets {
 				shared.Metric = event.Metric
+				shared.Size = event.Size
 				shared.Insets = event.Insets
 				shared.Count++
 			}
@@ -57,34 +58,24 @@ func (window *Window) Frame() x.Observable[Frame] {
 		x.AsObservable[Frame](x.FromChan(channel))(observe, scheduler, subscriber)
 		frame, mycount := update(nil)
 		channel <- frame
-		observer := func(next event.Event, err error, done bool) {
-			switch {
-			case !done:
-				frame, count := update(next)
-				if count > mycount {
-					mycount = count
-					if subscriber.Subscribed() {
-						select {
-						case channel <- frame:
-							// OK
-						default:
-							panic("Frame: Channel Overflow")
-						}
+		handler := NewHandler(func(next event.Event, done bool) {
+			if done {
+				close(channel)
+				return
+			}
+			frame, count := update(next)
+			if count > mycount {
+				mycount = count
+				if subscriber.Subscribed() {
+					select {
+					case channel <- frame:
+						// OK
+					default:
+						panic("Frame: Channel Overflow")
 					}
 				}
-			case err != nil:
-				select {
-				case channel <- err:
-					// OK
-				default:
-					panic("Frame: Channel Overflow")
-				}
-				close(channel)
-			default:
-				close(channel)
 			}
-		}
-		handler := &EventHandler{observer}
+		})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

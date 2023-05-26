@@ -51,43 +51,33 @@ func (window *Window) Click() x.Observable[Click] {
 		click.Lock()
 		click.Map[tag] = nil
 		click.Unlock()
-		observer := func(next event.Event, err error, done bool) {
-			switch {
-			case !done:
-				if frame, ok := next.(system.FrameEvent); ok {
-					var events []event.Event
-					for k := range click.Map {
-						events = append(events, frame.Queue.Events(k)...)
-					}
-					if n := len(events); n > 0 {
-						for k := range click.Map {
-							click.Map[k] = events
-						}
-					}
-					if subscriber.Subscribed() {
-						if events := click.Map[tag]; events != nil {
-							select {
-							case channel <- Click{Click: tag, Queue: EventQueue(events)}:
-								click.Map[tag] = nil
-							default:
-								panic("Click: Channel Overflow")
-							}
-						}
-					}
-				}
-			case err != nil:
-				select {
-				case channel <- err:
-					// OK
-				default:
-					panic("Click: Channel Overflow")
-				}
-				close(channel) // currently unable to forward an error
-			case err == nil:
+		handler := NewHandler(func(next event.Event, done bool) {
+			if done {
 				close(channel)
+				return
 			}
-		}
-		handler := &EventHandler{observer}
+			if frame, ok := next.(system.FrameEvent); ok {
+				var all []event.Event
+				for k := range click.Map {
+					all = append(all, frame.Queue.Events(k)...)
+				}
+				if n := len(all); n > 0 {
+					for k := range click.Map {
+						click.Map[k] = all
+					}
+				}
+				if subscriber.Subscribed() {
+					if events := click.Map[tag]; events != nil {
+						select {
+						case channel <- Click{Click: tag, Queue: EventQueue(events)}:
+							click.Map[tag] = nil
+						default:
+							panic("Click: Channel Overflow")
+						}
+					}
+				}
+			}
+		})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

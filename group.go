@@ -1,21 +1,22 @@
 package vibrant
 
 import (
-	"gioui.org/op"
+	"gioui.org/layout"
 
 	"github.com/reactivego/x"
 )
 
-func Group(layers ...x.Observable[op.CallOp]) x.Observable[op.CallOp] {
-	return x.Map(x.Combine(layers...), func(callops []op.CallOp) op.CallOp {
-		if len(callops) == 1 {
-			return callops[0]
+// Group combines multiple layout.Widget streams into a single stream of layout.Widget.
+func Group(layers ...x.Observable[layout.Widget]) x.Observable[layout.Widget] {
+	return x.Map(x.Combine(layers...), func(widgets []layout.Widget) layout.Widget {
+		if len(widgets) == 1 {
+			return widgets[0]
 		}
-		ops := &op.Ops{}
-		m := op.Record(ops)
-		for _, co := range callops {
-			co.Add(ops)
+		return func(gtx layout.Context) layout.Dimensions {
+			for _, widget := range widgets {
+				widget(gtx)
+			}
+			return layout.Dimensions{Size: gtx.Constraints.Max}
 		}
-		return m.Stop()
 	})
 }

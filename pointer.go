@@ -49,43 +49,33 @@ func (window *Window) Pointer() x.Observable[Pointer] {
 		pointer.Lock()
 		pointer.Map[tag] = nil
 		pointer.Unlock()
-		observer := func(next event.Event, err error, done bool) {
-			switch {
-			case !done:
-				if frame, ok := next.(system.FrameEvent); ok {
-					var events []event.Event
-					for k := range pointer.Map {
-						events = append(events, frame.Queue.Events(k)...)
-					}
-					if n := len(events); n > 0 {
-						for k := range pointer.Map {
-							pointer.Map[k] = events
-						}
-					}
-					if subscriber.Subscribed() {
-						if events := pointer.Map[tag]; events != nil {
-							select {
-							case channel <- Pointer{Tag: tag, Queue: EventQueue(events)}:
-								pointer.Map[tag] = nil
-							default:
-								panic("Pointer: Channel Overflow")
-							}
-						}
-					}
-				}
-			case err != nil:
-				select {
-				case channel <- err:
-					// OK
-				default:
-					panic("Pointer: Channel Overflow")
-				}
+		handler := NewHandler(func(next event.Event, done bool) {
+			if done {
 				close(channel)
-			default:
-				close(channel)
+				return
 			}
-		}
-		handler := &EventHandler{observer}
+			if frame, ok := next.(system.FrameEvent); ok {
+				var all []event.Event
+				for k := range pointer.Map {
+					all = append(all, frame.Queue.Events(k)...)
+				}
+				if n := len(all); n > 0 {
+					for k := range pointer.Map {
+						pointer.Map[k] = all
+					}
+				}
+				if subscriber.Subscribed() {
+					if events := pointer.Map[tag]; events != nil {
+						select {
+						case channel <- Pointer{Tag: tag, Queue: EventQueue(events)}:
+							pointer.Map[tag] = nil
+						default:
+							panic("Pointer: Channel Overflow")
+						}
+					}
+				}
+			}
+		})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

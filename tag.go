@@ -6,15 +6,15 @@ import (
 	"gioui.org/io/event"
 )
 
-type tag uint64
-
-var _tag tag
+var _uid uint64
 
 func Tag() event.Tag {
-	_tag++
-	t := _tag
-	return &t
+	_uid++
+	tag := tag(_uid)
+	return &tag
 }
+
+type tag uint64
 
 func (t tag) String() string {
 	return strconv.FormatUint(uint64(t), 10)
