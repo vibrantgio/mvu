@@ -5,7 +5,7 @@ import (
 
 	"gioui.org/gesture"
 	"gioui.org/io/event"
-	"gioui.org/io/system"
+	"gioui.org/layout"
 
 	"github.com/reactivego/x"
 )
@@ -33,15 +33,11 @@ func (window *Window) Hover() x.Observable[Hover] {
 		hover.Lock()
 		hover.Map[tag] = nil
 		hover.Unlock()
-		handler := NewHandler(func(next event.Event, done bool) {
-			if done {
-				close(channel)
-				return
-			}
-			if frame, ok := next.(system.FrameEvent); ok {
+		handler := NewHandler(
+			func(gtx layout.Context) {
 				var all []event.Event
 				for k := range hover.Map {
-					all = append(all, frame.Queue.Events(k)...)
+					all = append(all, gtx.Events(k)...)
 				}
 				if n := len(all); n > 0 {
 					for k := range hover.Map {
@@ -58,8 +54,9 @@ func (window *Window) Hover() x.Observable[Hover] {
 						}
 					}
 				}
-			}
-		})
+			}, func() {
+				close(channel)
+			})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

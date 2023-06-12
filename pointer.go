@@ -1,81 +1,65 @@
 package vibrant
 
 import (
-	"sync"
-
 	"gioui.org/io/event"
 	"gioui.org/io/pointer"
-	"gioui.org/io/system"
+	"gioui.org/layout"
 	"gioui.org/op"
 
 	"github.com/reactivego/x"
 )
 
-func PointerEvents(observable x.Observable[Pointer]) x.Observable[pointer.Event] {
-	return x.SwitchMap(observable, func(pointer Pointer) x.Observable[pointer.Event] {
-		return x.From(pointer.Events()...)
-	})
-}
-
 type Pointer struct {
 	event.Tag
-	event.Queue
+	Event pointer.Event
 }
 
 func (p Pointer) Add(ops *op.Ops, types pointer.Type) {
 	pointer.InputOp{Tag: p.Tag, Types: types}.Add(ops)
 }
 
-func (p Pointer) Events() []pointer.Event {
-	var events []pointer.Event
-	for _, event := range p.Queue.Events(p.Tag) {
-		if event, ok := event.(pointer.Event); ok {
-			events = append(events, event)
+func (window *Window) PointerEvents() x.Observable[Pointer] {
+	return x.SwitchMap(window.PointerBurst(), func(burst PointerBurst) x.Observable[Pointer] {
+		if len(burst.Events) == 0 {
+			return x.Of(Pointer{Tag: burst.Tag})
 		}
-	}
-	return events
+		var events []Pointer
+		for _, b := range burst.Events {
+			events = append(events, Pointer{Tag: burst.Tag, Event: b})
+		}
+		return x.From(events...)
+	})
 }
 
-func (window *Window) Pointer() x.Observable[Pointer] {
-	pointer := struct {
-		sync.Mutex
-		Map map[event.Tag][]event.Event
-	}{Map: make(map[event.Tag][]event.Event)}
-	return func(observe x.Observer[Pointer], scheduler x.Scheduler, subscriber x.Subscriber) {
-		channel := make(chan any, 5)
-		x.AsObservable[Pointer](x.FromChan(channel))(observe, scheduler, subscriber)
-		tag := Tag()
-		channel <- Pointer{Tag: tag, Queue: EventQueue([]event.Event{})}
-		pointer.Lock()
-		pointer.Map[tag] = nil
-		pointer.Unlock()
-		handler := NewHandler(func(next event.Event, done bool) {
-			if done {
+type PointerBurst struct {
+	event.Tag
+	Events []pointer.Event
+}
+
+func (window *Window) PointerBurst() x.Observable[PointerBurst] {
+	return func(observe x.Observer[PointerBurst], scheduler x.Scheduler, subscriber x.Subscriber) {
+		channel := make(chan PointerBurst, 5)
+		x.FromChan(channel)(observe, scheduler, subscriber)
+		tag := new(struct{})
+		channel <- PointerBurst{Tag: tag}
+		handler := NewHandler(
+			func(gtx layout.Context) {
+				var events []pointer.Event
+				for _, event := range gtx.Events(tag) {
+					if event, ok := event.(pointer.Event); ok {
+						events = append(events, event)
+					}
+				}
+				if subscriber.Subscribed() && len(events) > 0 {
+					select {
+					case channel <- PointerBurst{Tag: tag, Events: events}:
+					default:
+						panic("Pointer: Channel Overflow")
+					}
+				}
+			}, func() {
 				close(channel)
-				return
-			}
-			if frame, ok := next.(system.FrameEvent); ok {
-				var all []event.Event
-				for k := range pointer.Map {
-					all = append(all, frame.Queue.Events(k)...)
-				}
-				if n := len(all); n > 0 {
-					for k := range pointer.Map {
-						pointer.Map[k] = all
-					}
-				}
-				if subscriber.Subscribed() {
-					if events := pointer.Map[tag]; events != nil {
-						select {
-						case channel <- Pointer{Tag: tag, Queue: EventQueue(events)}:
-							pointer.Map[tag] = nil
-						default:
-							panic("Pointer: Channel Overflow")
-						}
-					}
-				}
-			}
-		})
+			})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}

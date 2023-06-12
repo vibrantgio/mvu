@@ -5,7 +5,7 @@ import (
 
 	"gioui.org/io/event"
 	"gioui.org/io/key"
-	"gioui.org/io/system"
+	"gioui.org/layout"
 	"gioui.org/op"
 
 	"github.com/reactivego/x"
@@ -143,20 +143,16 @@ func (window *Window) Keyboard() x.Observable[Keyboard] {
 	return func(observe x.Observer[Keyboard], scheduler x.Scheduler, subscriber x.Subscriber) {
 		channel := make(chan any, 5)
 		x.AsObservable[Keyboard](x.FromChan(channel))(observe, scheduler, subscriber)
-		tag := Tag()
+		tag := new(struct{})
 		channel <- Keyboard{Tag: tag, Queue: EventQueue([]event.Event{})}
 		input.Lock()
 		input.Map[tag] = nil
 		input.Unlock()
-		handler := NewHandler(func(next event.Event, done bool) {
-			if done {
-				close(channel)
-				return
-			}
-			if frame, ok := next.(system.FrameEvent); ok {
+		handler := NewHandler(
+			func(gtx layout.Context) {
 				var all []event.Event
 				for k := range input.Map {
-					all = append(all, frame.Queue.Events(k)...)
+					all = append(all, gtx.Events(k)...)
 				}
 				if n := len(all); n > 0 {
 					for k := range input.Map {
@@ -173,8 +169,9 @@ func (window *Window) Keyboard() x.Observable[Keyboard] {
 						}
 					}
 				}
-			}
-		})
+			}, func() {
+				close(channel)
+			})
 		window.Append(handler)
 		subscriber.OnUnsubscribe(func() { window.Delete(handler) })
 	}
