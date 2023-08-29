@@ -47,11 +47,11 @@ func NewWindow(options ...app.Option) *Window {
 }
 
 func (window *Window) MsgOps() x.Observable[MsgOp] {
-	return x.FromChan(window.msgOps)
+	return x.Recv(window.msgOps)
 }
 
 func (window *Window) Layout(layers ...x.Observable[layout.Widget]) x.Subscription {
-	events := x.FromChan(window.Events()).Filter(func(next event.Event) bool {
+	events := x.Recv(window.Events()).Filter(func(next event.Event) bool {
 		if kLogEvents {
 			log.Printf("event: %[1]T %[1]v\n", next)
 		}

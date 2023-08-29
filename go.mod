@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	gioui.org v0.1.0
-	github.com/reactivego/x v0.1.7
+	github.com/reactivego/x v0.2.1
 )
 
 require (
@@ -17,7 +17,7 @@ require (
 	github.com/reactivego/scheduler v0.0.8 // indirect
 	github.com/reactivego/seen v0.0.1 // indirect
 	github.com/reactivego/svg v0.0.1 // indirect
-	golang.org/x/exp v0.0.0-20230725093048-515e97ebf090 // indirect
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b // indirect
 	golang.org/x/exp/shiny v0.0.0-20230725093048-515e97ebf090 // indirect
 	golang.org/x/image v0.9.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
