@@ -1,53 +1,31 @@
-package vibrant
+package mvu
 
 import (
-	"image/color"
 	"log"
 	"unsafe"
 
 	"gioui.org/app"
-	"gioui.org/f32"
 	"gioui.org/io/event"
-	"gioui.org/io/pointer"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/op/clip"
 
-	"github.com/reactivego/gio"
 	"github.com/reactivego/x"
 )
-
-const kLogEvents = false
-
-func Backdrops(fill color.Color) x.Observable[layout.Widget] {
-	return x.Of(gio.Backdrop(fill))
-}
-
-func LinearGradients(stop1 f32.Point, color1 color.Color, stop2 f32.Point, color2 color.Color) x.Observable[layout.Widget] {
-	return x.Of(gio.LinearGradient(stop1, color1, stop2, color2))
-}
-
-type MsgOp struct{ Msg any }
-
-func (op MsgOp) Add(ops *op.Ops) {
-	defer clip.Rect{}.Push(ops).Pop()
-	pointer.InputOp{Tag: op}.Add(ops)
-}
 
 // Window handles the events of a single gioui app window.
 type Window struct {
 	*app.Window
 
-	msgOps chan MsgOp
+	messageOps chan MessageOp
 }
 
 func NewWindow(options ...app.Option) *Window {
-	return &Window{Window: app.NewWindow(options...), msgOps: make(chan MsgOp, 1)}
+	return &Window{Window: app.NewWindow(options...), messageOps: make(chan MessageOp, 1)}
 }
 
-func (window *Window) MsgOps() x.Observable[MsgOp] {
-	return x.Recv(window.msgOps)
+func (window *Window) MessageOps() x.Observable[MessageOp] {
+	return x.Recv(window.messageOps)
 }
 
 func (window *Window) Layout(layers ...x.Observable[layout.Widget]) x.Subscription {
@@ -85,15 +63,13 @@ func (window *Window) Layout(layers ...x.Observable[layout.Widget]) x.Subscripti
 				}
 				frame.Frame(gtx.Ops)
 				type internalOps struct {
-					version     int
-					data        []byte
-					refs        []interface{}
-					nextStateID int
-					multipOp    bool
+					version int
+					data    []byte
+					refs    []interface{}
 				}
 				for _, op := range (*internalOps)(unsafe.Pointer(&ops.Internal)).refs {
-					if msgop, matches := op.(MsgOp); matches {
-						window.msgOps <- msgop
+					if mo, matches := op.(MessageOp); matches {
+						window.messageOps <- mo
 					}
 				}
 			}
@@ -101,9 +77,9 @@ func (window *Window) Layout(layers ...x.Observable[layout.Widget]) x.Subscripti
 			// log.Printf("error: %v\n", err)
 		default:
 			// log.Println("complete")
-			if window.msgOps != nil {
-				close(window.msgOps)
-				window.msgOps = nil
+			if window.messageOps != nil {
+				close(window.messageOps)
+				window.messageOps = nil
 			}
 		}
 	}
