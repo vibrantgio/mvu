@@ -26,7 +26,7 @@ func (cmd Command) Trace(name string) Command {
 	return cmd
 }
 
-func Nothing() Command {
+func DoNothing() Command {
 	return Command{x.Empty[any]()}
 }
 
