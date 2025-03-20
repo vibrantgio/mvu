@@ -13,30 +13,26 @@ import (
 	"github.com/reactivego/x"
 )
 
-// Viewer handles the events of a single gioui app window.
-type Viewer interface {
-	Messages() x.Observable[any]
-	View(layers ...x.Observable[layout.Widget]) x.Subscription
-}
-
-func NewViewer(options ...app.Option) Viewer {
-	return &view{options: options, messageOps: make(chan MessageOp, 1)}
-}
-
-type view struct {
-	options    []app.Option
+// Window handles the events of a single gioui app Window.
+type Window struct {
+	window     *app.Window
 	messageOps chan MessageOp
 }
 
-func (r *view) Messages() x.Observable[any] {
-	f := func(msgOp MessageOp) any { return msgOp.Message }
-	return x.Map(x.Recv(r.messageOps), f)
+func NewWindow(options ...app.Option) *Window {
+	return &Window{window: app.NewWindow(options...), messageOps: make(chan MessageOp, 1)}
 }
 
-func (r *view) View(layers ...x.Observable[layout.Widget]) x.Subscription {
-	window := app.NewWindow(r.options...)
+func (w *Window) Window() *app.Window {
+	return w.window
+}
 
-	events := x.Recv(window.Events()).Filter(func(next event.Event) bool {
+func (w *Window) Messages() x.Observable[Message] {
+	return x.Map(x.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
+}
+
+func (w *Window) Render(layers ...x.Observable[layout.Widget]) x.Subscription {
+	events := x.Recv(w.window.Events()).Filter(func(next event.Event) bool {
 		if kLogEvents {
 			log.Printf("event: %[1]T %[1]v\n", next)
 		}
@@ -53,31 +49,31 @@ func (r *view) View(layers ...x.Observable[layout.Widget]) x.Subscription {
 
 	// Whenever the layers change, invalidate the window.
 	invalidate := func(layers []layout.Widget) []layout.Widget {
-		window.Invalidate()
+		w.window.Invalidate()
 		return layers
 	}
 
 	pairs := x.WithLatestFromPair(events, x.Map(x.Combine(layers...), invalidate).SubscribeOn(x.Goroutine))
 
-	var ops op.Ops
+	ops := new(op.Ops)
 	observer := func(next x.Pair[event.Event, []layout.Widget], err error, done bool) {
 		switch {
 		case !done:
-			if frame, ok := next.First.(system.FrameEvent); ok {
-				gtx := layout.NewContext(&ops, frame)
+			if event, ok := next.First.(system.FrameEvent); ok {
+				gtx := layout.NewContext(ops, event)
 				for _, widget := range next.Second {
 					widget(gtx)
 				}
-				frame.Frame(gtx.Ops)
+				event.Frame(gtx.Ops)
 
-				type internalOps struct {
+				type unsafeOps struct {
 					version int // int gioui v0.8 this has become a uint32
 					data    []byte
-					refs    []interface{}
+					refs    []any
 				}
-				for _, op := range (*internalOps)(unsafe.Pointer(&ops.Internal)).refs {
+				for _, op := range (*unsafeOps)(unsafe.Pointer(&ops.Internal)).refs {
 					if msgOp, matches := op.(MessageOp); matches {
-						r.messageOps <- msgOp
+						w.messageOps <- msgOp
 					}
 				}
 			}
@@ -85,9 +81,9 @@ func (r *view) View(layers ...x.Observable[layout.Widget]) x.Subscription {
 			// log.Printf("error: %v\n", err)
 		default:
 			// log.Println("complete")
-			if r.messageOps != nil {
-				close(r.messageOps)
-				r.messageOps = nil
+			if w.messageOps != nil {
+				close(w.messageOps)
+				w.messageOps = nil
 			}
 		}
 	}

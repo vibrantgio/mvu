@@ -6,7 +6,9 @@ import (
 	"gioui.org/op/clip"
 )
 
-type MessageOp struct{ Message any }
+type Message = any
+
+type MessageOp struct{ Message }
 
 func (op MessageOp) Add(o *op.Ops) {
 	defer clip.Rect{}.Push(o).Pop()
