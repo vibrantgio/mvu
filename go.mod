@@ -1,10 +1,10 @@
 module github.com/reactivego/mvu
 
-go 1.20
+go 1.23.0
 
 require (
 	gioui.org v0.1.0
-	github.com/reactivego/x v0.2.1
+	github.com/reactivego/rx v0.2.0
 )
 
 require (

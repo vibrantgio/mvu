@@ -3,13 +3,13 @@ package mvu
 import (
 	"fmt"
 
-	"github.com/reactivego/x"
+	"github.com/reactivego/rx"
 )
 
 const should_trace = true
 
 // Command
-type Command struct{ x.Observable[Message] }
+type Command struct{ rx.Observable[Message] }
 
 func (cmd Command) Trace(name string) Command {
 	if should_trace {
@@ -26,7 +26,7 @@ func (cmd Command) Trace(name string) Command {
 }
 
 func Do(command func() (Message, error)) Command {
-	runner := x.Create[Message](func(index int) (Next Message, Err error, Done bool) {
+	runner := rx.Create[Message](func(index int) (Next Message, Err error, Done bool) {
 		if index == 0 {
 			msg, err := command()
 			if err != nil {
@@ -47,13 +47,13 @@ func DoNothing() Command {
 }
 
 func DoConcurrent(cmds ...Command) Command {
-	return Command{x.MergeMap(x.From(cmds...), func(cmd Command) x.Observable[any] {
+	return Command{rx.MergeMap(rx.From(cmds...), func(cmd Command) rx.Observable[any] {
 		return cmd.Observable
 	})}
 }
 
 func DoSequence(cmds ...Command) Command {
-	return Command{x.ConcatMap(x.From(cmds...), func(cmd Command) x.Observable[any] {
+	return Command{rx.ConcatMap(rx.From(cmds...), func(cmd Command) rx.Observable[any] {
 		return cmd.Observable
 	})}
 }

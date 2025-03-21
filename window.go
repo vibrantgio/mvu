@@ -10,7 +10,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 
-	"github.com/reactivego/x"
+	"github.com/reactivego/rx"
 )
 
 // Window handles the events of a single gioui app Window.
@@ -27,12 +27,12 @@ func (w *Window) Window() *app.Window {
 	return w.window
 }
 
-func (w *Window) Messages() x.Observable[Message] {
-	return x.Map(x.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
+func (w *Window) Messages() rx.Observable[Message] {
+	return rx.Map(rx.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
 }
 
-func (w *Window) Render(layers ...x.Observable[layout.Widget]) x.Subscription {
-	events := x.Recv(w.window.Events()).Filter(func(next event.Event) bool {
+func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription {
+	events := rx.Recv(w.window.Events()).Filter(func(next event.Event) bool {
 		if kLogEvents {
 			log.Printf("event: %[1]T %[1]v\n", next)
 		}
@@ -53,10 +53,10 @@ func (w *Window) Render(layers ...x.Observable[layout.Widget]) x.Subscription {
 		return layers
 	}
 
-	pairs := x.WithLatestFromPair(events, x.Map(x.Combine(layers...), invalidate).SubscribeOn(x.Goroutine))
+	pairs := rx.WithLatestFromPair(events, rx.Map(rx.Combine(layers...), invalidate).SubscribeOn(rx.Goroutine))
 
 	ops := new(op.Ops)
-	observer := func(next x.Pair[event.Event, []layout.Widget], err error, done bool) {
+	observer := func(next rx.Pair[event.Event, []layout.Widget], err error, done bool) {
 		switch {
 		case !done:
 			if event, ok := next.First.(system.FrameEvent); ok {
@@ -87,5 +87,5 @@ func (w *Window) Render(layers ...x.Observable[layout.Widget]) x.Subscription {
 			}
 		}
 	}
-	return pairs.Subscribe(observer, x.NewScheduler())
+	return pairs.Subscribe(observer, rx.NewScheduler())
 }
