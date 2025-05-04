@@ -53,10 +53,10 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 		return layers
 	}
 
-	pairs := rx.WithLatestFromPair(events, rx.Map(rx.Combine(layers...), invalidate).SubscribeOn(rx.Goroutine))
+	pairs := rx.WithLatestFrom2(events, rx.Map(rx.CombineLatest(layers...), invalidate).SubscribeOn(rx.Goroutine))
 
 	ops := new(op.Ops)
-	observer := func(next rx.Pair[event.Event, []layout.Widget], err error, done bool) {
+	observer := func(next rx.Tuple2[event.Event, []layout.Widget], err error, done bool) {
 		switch {
 		case !done:
 			if event, ok := next.First.(system.FrameEvent); ok {

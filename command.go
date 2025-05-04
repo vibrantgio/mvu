@@ -14,7 +14,7 @@ type Command struct{ rx.Observable[Message] }
 func (cmd Command) Trace(name string) Command {
 	if should_trace {
 		fmt.Println("Executing:", name)
-		return Command{cmd.Finally(func(err error) {
+		return Command{cmd.OnDone(func(err error) {
 			if err == nil {
 				fmt.Println("Completed:", name)
 			} else {
