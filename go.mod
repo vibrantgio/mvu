@@ -1,4 +1,4 @@
-module github.com/reactivego/mvu
+module github.com/vibrantgio/mvu
 
 go 1.23.0
 
