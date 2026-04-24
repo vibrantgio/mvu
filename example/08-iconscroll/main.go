@@ -15,10 +15,10 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/unit"
 
-	"github.com/reactivego/gio"
-	raster "github.com/vibrantgio/ivg/raster/gio"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/backdrop"
+	raster "github.com/vibrantgio/ivg/raster/gio"
+	"github.com/vibrantgio/mvu"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 
 func Minimal() {
 	window := mvu.NewWindow(app.Title("MVU - Icon Scroll"))
-	backdrops := rx.Of(gio.Backdrop(colornames.Grey600))
+	backdrops := rx.Of(backdrop.Widget(colornames.Grey600))
 
 	icon, err := raster.Widget(icons.ActionAlarm, 48, 48, raster.WithColors(colornames.Amber600))
 	if err != nil {

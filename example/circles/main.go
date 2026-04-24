@@ -12,9 +12,10 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op/clip"
 
-	"github.com/reactivego/gio"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/backdrop"
+	vcircle "github.com/vibrantgio/circle"
+	"github.com/vibrantgio/mvu"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 func Circles() {
 	window := mvu.NewWindow(app.Title("MVU - Circles"))
 
-	backdrops := rx.Of(gio.Backdrop(colornames.Grey600))
+	backdrops := rx.Of(backdrop.Widget(colornames.Grey600))
 
 	type circle struct {
 		Center f32.Point
@@ -54,7 +55,7 @@ func Circles() {
 				}
 			}
 			for _, c := range circles {
-				gio.FillCircle(gtx.Ops, c.Center, c.Radius, colornames.Yellow800)
+				vcircle.FillCircle(gtx.Ops, c.Center, c.Radius, colornames.Yellow800)
 			}
 			return layout.Dimensions{Size: size}
 		})

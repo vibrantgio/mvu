@@ -11,9 +11,9 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 
-	"github.com/reactivego/gio"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/backdrop"
+	"github.com/vibrantgio/mvu"
 
 	"github.com/fogleman/ease"
 )
@@ -41,7 +41,7 @@ func Tweening() {
 	})
 	tweened := TweenColors(stops, 60, 900*time.Millisecond, ease.InOutQuad)
 	backdrop := rx.Map(tweened, func(fill color.RGBA) layout.Widget {
-		return gio.Backdrop(fill)
+		return backdrop.Widget(fill)
 	})
 
 	window.Render(backdrop).Wait()

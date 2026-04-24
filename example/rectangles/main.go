@@ -13,9 +13,9 @@ import (
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 
-	"github.com/reactivego/gio"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/backdrop"
+	"github.com/vibrantgio/mvu"
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 func Rectangles() {
 	window := mvu.NewWindow(app.Title("MVU - Rectangles"))
 
-	backdrop := rx.Of(gio.Backdrop(colornames.Grey600))
+	backdrop := rx.Of(backdrop.Widget(colornames.Grey600))
 
 	fixed := rx.Of(image.Rect(100, 100, 200, 200))
 	yellow := RRect(fixed, 5, colornames.Yellow700)

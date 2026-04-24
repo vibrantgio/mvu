@@ -8,9 +8,9 @@ import (
 	"gioui.org/app"
 	"gioui.org/f32"
 
-	"github.com/reactivego/gio"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/gradient"
+	"github.com/vibrantgio/mvu"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 
 func Gradient() {
 	window := mvu.NewWindow(app.Title("MVU - Gradient"))
-	gradient := rx.Of(gio.LinearGradient(f32.Pt(0, 0), colornames.DeepPurple800, f32.Pt(1, 1), colornames.DeepPurple300))
+	gradient := rx.Of(gradient.LinearGradient(f32.Pt(0, 0), colornames.DeepPurple800, f32.Pt(1, 1), colornames.DeepPurple300))
 	window.Render(gradient).Wait()
 	os.Exit(0)
 }

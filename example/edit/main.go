@@ -16,11 +16,11 @@ import (
 	"gioui.org/text"
 	"gioui.org/widget"
 
-	"github.com/reactivego/gio"
-	"github.com/reactivego/gio/font/roboto/regular/normal"
-	"github.com/reactivego/gio/style"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/backdrop"
+	"github.com/vibrantgio/font/roboto/regular/normal"
+	"github.com/vibrantgio/mvu"
+	"github.com/vibrantgio/style"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 func Edit() {
 	window := mvu.NewWindow(app.Title("MVU - Edit"))
 
-	backdrops := rx.Of(gio.Backdrop(colornames.Grey800))
+	backdrops := rx.Of(backdrop.Widget(colornames.Grey800))
 
 	edit1 := Input(0.5, 0.0, "What's Up?", colornames.Blue50, colornames.Blue700, colornames.Blue900)
 	edit2 := Input(0.5, 1.0, "What's Up?", colornames.Yellow50, colornames.Yellow700, colornames.Yellow900)
@@ -56,7 +56,7 @@ func Input(ax, ay float32, initial string, textColor, selectColor, backColor col
 				defer clip.Rect{Max: image.Pt(size.X, size.Y/2)}.Op().Push(gtx.Ops).Pop()
 			}
 
-			gio.FillBackdrop(gtx.Ops, backColor)
+			backdrop.Fill(gtx.Ops, backColor)
 
 			m := op.Record(gtx.Ops)
 			c := color.NRGBAModel.Convert(textColor).(color.NRGBA)

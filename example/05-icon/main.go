@@ -8,10 +8,10 @@ import (
 
 	"gioui.org/app"
 
-	"github.com/reactivego/gio"
-	raster "github.com/vibrantgio/ivg/raster/gio"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/backdrop"
+	ivg "github.com/vibrantgio/ivg/raster/gio"
+	"github.com/vibrantgio/mvu"
 )
 
 func main() {
@@ -21,8 +21,8 @@ func main() {
 
 func Icon() {
 	window := mvu.NewWindow(app.Title("MVU - Icon"))
-	backdrop := rx.Of(gio.Backdrop(colornames.Grey600))
-	icon := rx.Of(rx.Must(raster.Widget(icons.ActionAlarm, 48, 48, raster.WithColors(colornames.Orange400))))
+	backdrop := rx.Of(backdrop.Widget(colornames.Grey600))
+	icon := rx.Of(rx.Must(ivg.Widget(icons.ActionAlarm, 48, 48, ivg.WithColors(colornames.Orange400))))
 	window.Render(backdrop, icon).Wait()
 	os.Exit(0)
 }

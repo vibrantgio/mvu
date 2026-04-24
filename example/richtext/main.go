@@ -14,9 +14,9 @@ import (
 	"gioui.org/unit"
 	"gioui.org/x/richtext"
 
-	"github.com/reactivego/gio/font/roboto/regular/normal"
-	"github.com/reactivego/mvu"
 	"github.com/reactivego/rx"
+	"github.com/vibrantgio/font/roboto/regular/normal"
+	"github.com/vibrantgio/mvu"
 )
 
 func main() {
