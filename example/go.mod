@@ -11,7 +11,7 @@ require (
 	github.com/vibrantgio/circle v0.0.2
 	github.com/vibrantgio/font v0.0.2
 	github.com/vibrantgio/gradient v0.0.2
-	github.com/vibrantgio/ivg/raster/gio v0.1.3
+	github.com/vibrantgio/ivg/raster/gio v0.1.4
 	github.com/vibrantgio/mvu v0.1.9
 	github.com/vibrantgio/style v0.0.2
 	github.com/vibrantgio/textdraw v0.0.2
