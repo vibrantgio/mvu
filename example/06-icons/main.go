@@ -12,7 +12,7 @@ import (
 
 	"github.com/reactivego/rx"
 	"github.com/vibrantgio/backdrop"
-	raster "github.com/vibrantgio/ivg/raster/gio"
+	ivg "github.com/vibrantgio/ivg/raster/gio"
 	"github.com/vibrantgio/mvu"
 )
 
@@ -30,7 +30,7 @@ func Icons() {
 	})
 
 	content := rx.Map(icons, func(data []byte) layout.Widget {
-		icon := rx.Must(raster.Widget(data, 48, 48, raster.WithColors(colornames.Orange400)))
+		icon := rx.Must(ivg.Widget(data, 48, 48, ivg.WithColors(colornames.Orange400)))
 		return func(gtx layout.Context) layout.Dimensions {
 			return layout.UniformInset(24).Layout(gtx, icon)
 		}
