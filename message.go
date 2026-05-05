@@ -1,7 +1,7 @@
 package mvu
 
 import (
-	"gioui.org/io/pointer"
+	"gioui.org/io/event"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 )
@@ -12,5 +12,5 @@ type MessageOp struct{ Message }
 
 func (op MessageOp) Add(o *op.Ops) {
 	defer clip.Rect{}.Push(o).Pop()
-	pointer.InputOp{Tag: op}.Add(o)
+	event.Op(o, op)
 }

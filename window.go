@@ -6,7 +6,6 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/io/event"
-	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
 
@@ -20,7 +19,9 @@ type Window struct {
 }
 
 func NewWindow(options ...app.Option) *Window {
-	return &Window{window: app.NewWindow(options...), messageOps: make(chan MessageOp, 1)}
+	w := new(app.Window)
+	w.Option(options...)
+	return &Window{window: w, messageOps: make(chan MessageOp, 1)}
 }
 
 func (w *Window) Window() *app.Window {
@@ -31,8 +32,24 @@ func (w *Window) Messages() rx.Observable[Message] {
 	return rx.Map(rx.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
 }
 
+// windowEvents wraps window.Event() (blocking) in a channel for rx.Recv.
+func windowEvents(win *app.Window) <-chan event.Event {
+	ch := make(chan event.Event)
+	go func() {
+		for {
+			e := win.Event()
+			ch <- e
+			if _, ok := e.(app.DestroyEvent); ok {
+				close(ch)
+				return
+			}
+		}
+	}()
+	return ch
+}
+
 func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription {
-	events := rx.Recv(w.window.Events()).Filter(func(next event.Event) bool {
+	events := rx.Recv(windowEvents(w.window)).Filter(func(next event.Event) bool {
 		if kLogEvents {
 			log.Printf("event: %[1]T %[1]v\n", next)
 		}
@@ -59,15 +76,17 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 	observer := func(next rx.Tuple2[event.Event, []layout.Widget], err error, done bool) {
 		switch {
 		case !done:
-			if event, ok := next.First.(system.FrameEvent); ok {
-				gtx := layout.NewContext(ops, event)
+			if frameEvent, ok := next.First.(app.FrameEvent); ok {
+				gtx := app.NewContext(ops, frameEvent)
 				for _, widget := range next.Second {
 					widget(gtx)
 				}
-				event.Frame(gtx.Ops)
+				frameEvent.Frame(gtx.Ops)
 
+				// Scan ops refs for MessageOps emitted during layout.
+				// version is uint32 in gioui.org/internal/ops since v0.8+.
 				type unsafeOps struct {
-					version int // int gioui v0.8 this has become a uint32
+					version uint32
 					data    []byte
 					refs    []any
 				}
