@@ -2,7 +2,6 @@ package mvu
 
 import (
 	"log"
-	"unsafe"
 
 	"gioui.org/app"
 	"gioui.org/io/event"
@@ -78,22 +77,16 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 		case !done:
 			if frameEvent, ok := next.First.(app.FrameEvent); ok {
 				gtx := app.NewContext(ops, frameEvent)
+				var frameMessages []MessageOp
+				registerCollector(ops, &frameMessages)
+				defer unregisterCollector(ops)
 				for _, widget := range next.Second {
 					widget(gtx)
 				}
+				unregisterCollector(ops)
 				frameEvent.Frame(gtx.Ops)
-
-				// Scan ops refs for MessageOps emitted during layout.
-				// version is uint32 in gioui.org/internal/ops since v0.8+.
-				type unsafeOps struct {
-					version uint32
-					data    []byte
-					refs    []any
-				}
-				for _, op := range (*unsafeOps)(unsafe.Pointer(&ops.Internal)).refs {
-					if msgOp, matches := op.(MessageOp); matches {
-						w.messageOps <- msgOp
-					}
+				for _, msgOp := range frameMessages {
+					w.messageOps <- msgOp
 				}
 			}
 		case err != nil:

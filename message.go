@@ -1,16 +1,37 @@
 package mvu
 
 import (
-	"gioui.org/io/event"
+	"sync"
+
 	"gioui.org/op"
-	"gioui.org/op/clip"
 )
 
 type Message = any
 
 type MessageOp struct{ Message }
 
-func (op MessageOp) Add(o *op.Ops) {
-	defer clip.Rect{}.Push(o).Pop()
-	event.Op(o, op)
+var (
+	collectorMu sync.Mutex
+	collectors  = make(map[*op.Ops]*[]MessageOp)
+)
+
+func registerCollector(o *op.Ops, msgs *[]MessageOp) {
+	collectorMu.Lock()
+	collectors[o] = msgs
+	collectorMu.Unlock()
+}
+
+func unregisterCollector(o *op.Ops) {
+	collectorMu.Lock()
+	delete(collectors, o)
+	collectorMu.Unlock()
+}
+
+func (msgOp MessageOp) Add(o *op.Ops) {
+	collectorMu.Lock()
+	msgs, ok := collectors[o]
+	collectorMu.Unlock()
+	if ok {
+		*msgs = append(*msgs, msgOp)
+	}
 }
