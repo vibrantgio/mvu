@@ -2,9 +2,9 @@ package mvu
 
 import (
 	"log"
+	"sync/atomic"
 
 	"gioui.org/app"
-	"gioui.org/io/event"
 	"gioui.org/layout"
 	"gioui.org/op"
 
@@ -31,73 +31,79 @@ func (w *Window) Messages() rx.Observable[Message] {
 	return rx.Map(rx.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
 }
 
-// windowEvents wraps window.Event() (blocking) in a channel for rx.Recv.
-func windowEvents(win *app.Window) <-chan event.Event {
-	ch := make(chan event.Event)
-	go func() {
-		for {
-			e := win.Event()
-			ch <- e
-			if _, ok := e.(app.DestroyEvent); ok {
-				close(ch)
-				return
-			}
-		}
-	}()
-	return ch
-}
-
+// Render drives the Gio v0.9 event loop. The returned subscription terminates
+// when the window emits an `app.DestroyEvent`.
+//
+// Gio v0.9 enforces a synchronous protocol: after delivering a `FrameEvent`,
+// the OS-side `deliverEvent` enters a select that can either receive the
+// rendered frame on `e.frames` or send `theFlushEvent` on `e.events`. Whoever
+// completes first wins, and if the flush is delivered before `Frame()` is
+// called, `deliverEvent` returns and the next `Frame()` deadlocks. The fix is
+// to read events and call `Frame()` on the *same* goroutine. Layer state is
+// updated concurrently via an atomic snapshot.
 func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription {
-	events := rx.Recv(windowEvents(w.window)).Filter(func(next event.Event) bool {
-		if kLogEvents {
-			log.Printf("event: %[1]T %[1]v\n", next)
-		}
-		return next != nil
-	})
-
-	// Slow loading layers should not block the event loop.
 	blank := func(gtx layout.Context) layout.Dimensions {
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	}
+	initial := make([]layout.Widget, len(layers))
 	for i := range layers {
 		layers[i] = layers[i].StartWith(blank)
+		initial[i] = blank
 	}
 
-	// Whenever the layers change, invalidate the window.
-	invalidate := func(layers []layout.Widget) []layout.Widget {
-		w.window.Invalidate()
-		return layers
+	var current atomic.Pointer[[]layout.Widget]
+	current.Store(&initial)
+
+	var layersSub rx.Subscription
+	if len(layers) > 0 {
+		layersSub = rx.CombineLatest(layers...).Subscribe(func(next []layout.Widget, err error, done bool) {
+			if !done && next != nil {
+				cp := make([]layout.Widget, len(next))
+				copy(cp, next)
+				current.Store(&cp)
+				w.window.Invalidate()
+			}
+		}, rx.Goroutine)
 	}
 
-	pairs := rx.WithLatestFrom2(events, rx.Map(rx.CombineLatest(layers...), invalidate).SubscribeOn(rx.Goroutine))
-
-	ops := new(op.Ops)
-	observer := func(next rx.Tuple2[event.Event, []layout.Widget], err error, done bool) {
-		switch {
-		case !done:
-			if frameEvent, ok := next.First.(app.FrameEvent); ok {
-				gtx := app.NewContext(ops, frameEvent)
+	loop := rx.Observable[struct{}](func(observe rx.Observer[struct{}], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+		ops := new(op.Ops)
+		scheduler.ScheduleRecursive(func(again func()) {
+			if !subscriber.Subscribed() {
+				return
+			}
+			e := w.window.Event()
+			if kLogEvents {
+				log.Printf("event: %[1]T %[1]v\n", e)
+			}
+			switch e := e.(type) {
+			case app.DestroyEvent:
+				if layersSub != nil {
+					layersSub.Unsubscribe()
+				}
+				if w.messageOps != nil {
+					close(w.messageOps)
+					w.messageOps = nil
+				}
+				observe(struct{}{}, e.Err, true)
+				return
+			case app.FrameEvent:
+				gtx := app.NewContext(ops, e)
 				var frameMessages []MessageOp
 				registerCollector(ops, &frameMessages)
-				defer unregisterCollector(ops)
-				for _, widget := range next.Second {
-					widget(gtx)
+				snapshot := *current.Load()
+				for _, layer := range snapshot {
+					layer(gtx)
 				}
 				unregisterCollector(ops)
-				frameEvent.Frame(gtx.Ops)
+				e.Frame(gtx.Ops)
 				for _, msgOp := range frameMessages {
 					w.messageOps <- msgOp
 				}
 			}
-		case err != nil:
-			// log.Printf("error: %v\n", err)
-		default:
-			// log.Println("complete")
-			if w.messageOps != nil {
-				close(w.messageOps)
-				w.messageOps = nil
-			}
-		}
-	}
-	return pairs.Subscribe(observer, rx.NewScheduler())
+			again()
+		})
+	})
+
+	return loop.Subscribe(func(struct{}, error, bool) {}, rx.NewScheduler())
 }

@@ -9,6 +9,7 @@ import (
 	"golang.org/x/exp/shiny/materialdesign/icons"
 
 	"gioui.org/app"
+	"gioui.org/io/event"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -40,11 +41,19 @@ func Minimal() {
 		widget := func(gtx layout.Context) layout.Dimensions {
 			max := gtx.Constraints.Max
 
-			sb := image.Rect(-100, -100, 100, 100)
 			cs := clip.Rect{Max: max}.Op().Push(gtx.Ops)
-			pointer.InputOp{Tag: &offset, Types: pointer.Scroll, ScrollBounds: sb}.Add(gtx.Ops)
+			event.Op(gtx.Ops, &offset)
 			cs.Pop()
-			for _, e := range gtx.Events(&offset) {
+			for {
+				e, ok := gtx.Source.Event(pointer.Filter{
+					Target:  &offset,
+					Kinds:   pointer.Scroll,
+					ScrollX: pointer.ScrollRange{Min: -100, Max: 100},
+					ScrollY: pointer.ScrollRange{Min: -100, Max: 100},
+				})
+				if !ok {
+					break
+				}
 				if e, ok := e.(pointer.Event); ok {
 					offset.X += gtx.Metric.PxToDp(int(e.Scroll.X))
 					offset.Y += gtx.Metric.PxToDp(int(e.Scroll.Y))

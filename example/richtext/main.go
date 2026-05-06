@@ -76,7 +76,7 @@ func Content() layout.Widget {
 	}
 	state := richtext.InteractiveText{}
 	index := 0
-	shaper := text.NewShaper(faces)
+	shaper := text.NewShaper(text.WithCollection(faces))
 
 	return func(gtx layout.Context) layout.Dimensions {
 
@@ -85,21 +85,23 @@ func Content() layout.Widget {
 		spans[4].Color = swatch[index%len(swatch)]
 
 		// process any interactions with the text since the last frame.
-		for span, events := state.Events(); span != nil; span, events = state.Events() {
-			for _, event := range events {
-				content, _ := span.Content()
-				switch event.Type {
-				case richtext.Click:
-					log.Println(event.ClickData.Type)
-					if event.ClickData.Type == gesture.TypeClick {
-						index++
-						op.InvalidateOp{}.Add(gtx.Ops)
-					}
-				case richtext.Hover:
-					log.Println("Hovered: " + content)
-				case richtext.LongPress:
-					log.Println("Long-pressed: " + content)
+		for {
+			span, event, ok := state.Update(gtx)
+			if !ok {
+				break
+			}
+			content, _ := span.Content()
+			switch event.Type {
+			case richtext.Click:
+				log.Println(event.ClickData.Kind)
+				if event.ClickData.Kind == gesture.KindClick {
+					index++
+					gtx.Execute(op.InvalidateCmd{})
 				}
+			case richtext.Hover:
+				log.Println("Hovered: " + content)
+			case richtext.LongPress:
+				log.Println("Long-pressed: " + content)
 			}
 		}
 

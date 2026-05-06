@@ -8,6 +8,7 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/f32"
+	"gioui.org/io/event"
 	"gioui.org/io/pointer"
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -38,11 +39,18 @@ func Circles() {
 		return rx.Of[layout.Widget](func(gtx layout.Context) layout.Dimensions {
 			size := gtx.Constraints.Max
 			defer clip.Rect{Max: size}.Push(gtx.Ops).Pop()
-			pointer.InputOp{Tag: &circles, Types: pointer.Press | pointer.Drag | pointer.Release}.Add(gtx.Ops)
-			for _, e := range gtx.Events(&circles) {
+			event.Op(gtx.Ops, &circles)
+			for {
+				e, ok := gtx.Source.Event(pointer.Filter{
+					Target: &circles,
+					Kinds:  pointer.Press | pointer.Drag | pointer.Release,
+				})
+				if !ok {
+					break
+				}
 				if e, ok := e.(pointer.Event); ok {
 					var delta f32.Point
-					switch e.Type {
+					switch e.Kind {
 					case pointer.Press:
 						circles = append(circles, circle{Center: e.Position})
 						fallthrough

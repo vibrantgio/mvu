@@ -41,7 +41,7 @@ func Edit() {
 }
 
 func Input(ax, ay float32, initial string, textColor, selectColor, backColor color.Color) rx.Observable[layout.Widget] {
-	shaper := text.NewShaper([]font.FontFace{normal.FontFace()})
+	shaper := text.NewShaper(text.WithCollection([]font.FontFace{normal.FontFace()}))
 	return rx.Defer(func() rx.Observable[layout.Widget] {
 		edit := widget.Editor{}
 		edit.SetText(initial)
