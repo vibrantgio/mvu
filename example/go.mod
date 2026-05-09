@@ -20,7 +20,6 @@ require (
 
 require (
 	eliasnaur.com/font v0.0.0-20230308162249-dd43949cb42d // indirect
-	gioui.org/cpu v0.0.0-20220412190645-f1e9e8c3b1f7 // indirect
 	gioui.org/shader v1.0.8 // indirect
 	github.com/go-text/typesetting v0.3.0 // indirect
 	github.com/reactivego/scheduler v0.1.2 // indirect
