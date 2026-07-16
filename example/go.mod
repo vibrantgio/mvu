@@ -9,11 +9,11 @@ require (
 	github.com/reactivego/rx v0.2.2
 	github.com/vibrantgio/backdrop v0.0.1
 	github.com/vibrantgio/circle v0.0.2
-	github.com/vibrantgio/font v0.0.2
+	github.com/vibrantgio/font v0.0.3
 	github.com/vibrantgio/gradient v0.0.2
 	github.com/vibrantgio/ivg/raster/gio v0.1.4
-	github.com/vibrantgio/mvu v0.1.9
-	github.com/vibrantgio/style v0.0.2
+	github.com/vibrantgio/mvu v0.3.0
+	github.com/vibrantgio/style v0.0.3
 	github.com/vibrantgio/textdraw v0.0.2
 	golang.org/x/exp/shiny v0.0.0-20250408133849-7e4ce0ab07d0
 )
