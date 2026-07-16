@@ -26,7 +26,7 @@ This keeps state changes explicit while preserving the flexibility of Gio widget
 
 ## Features
 
-- Generic `Runtime[Model]` for typed application state.
+- Generic `Run` and `Loop` functions for typed application state.
 - Elm-style `Init`, `Update`, and `View` functions.
 - `Command` abstraction backed by `github.com/reactivego/rx` observables.
 - Helpers for no-op, sequential, and concurrent commands.
@@ -76,13 +76,9 @@ func main() {
 }
 
 func run() {
-	runtime := mvu.NewRuntime[Model](app.Title("MVU Counter"))
+	w := mvu.NewWindow(app.Title("MVU Counter"))
 
-	runtime.Init = func() (Model, mvu.Command) {
-		return Model{}, mvu.DoNothing()
-	}
-
-	runtime.Update = func(model Model, message mvu.Message) (Model, mvu.Command) {
+	update := func(model Model, message mvu.Message) (Model, mvu.Command) {
 		switch message.(type) {
 		case Increment:
 			model.Count++
@@ -90,7 +86,7 @@ func run() {
 		return model, mvu.DoNothing()
 	}
 
-	runtime.View = func(model Model) layout.Widget {
+	view := func(model Model) layout.Widget {
 		return func(gtx layout.Context) layout.Dimensions {
 			for button.Clicked(gtx) {
 				mvu.MessageOp{Message: Increment{}}.Add(gtx.Ops)
@@ -102,7 +98,11 @@ func run() {
 		}
 	}
 
-	if err := runtime.Run(); err != nil {
+	init := func() (Model, mvu.Command) {
+		return Model{}, mvu.DoNothing()
+	}
+
+	if err := mvu.Run(w, init, update, view); err != nil {
 		log.Fatal(err)
 	}
 	os.Exit(0)
@@ -145,7 +145,7 @@ Messages can come from several places:
 
 ### Model
 
-Your model is the typed application state managed by `Runtime[Model]`. It can be a struct, primitive value, pointer, or any other Go type.
+Your model is the typed application state carried through the loop. It can be a struct, primitive value, pointer, or any other Go type.
 
 ```go
 type Model struct {
@@ -157,12 +157,14 @@ type Model struct {
 
 ### Init
 
-`Init` creates the initial model and an initial command. Use `mvu.DoNothing()` when there is no startup work.
+`Init` creates the seed model and an initial command; it is passed to `Run` or `Loop` alongside `update`, and called once when the loop starts. Use `mvu.DoNothing()` when there is no startup work. (At package level the name `init` is reserved by Go, so use `Init` or a local closure.)
 
 ```go
-runtime.Init = func() (Model, mvu.Command) {
+func Init() (Model, mvu.Command) {
 	return Model{Loading: true}, loadItems()
 }
+
+err := mvu.Run(w, Init, update, view)
 ```
 
 ### Update
@@ -170,7 +172,7 @@ runtime.Init = func() (Model, mvu.Command) {
 `Update` receives the current model and the next message. It returns the new model and a command to execute.
 
 ```go
-runtime.Update = func(model Model, message mvu.Message) (Model, mvu.Command) {
+func update(model Model, message mvu.Message) (Model, mvu.Command) {
 	switch msg := message.(type) {
 	case Loaded:
 		model.Loading = false
@@ -188,7 +190,7 @@ runtime.Update = func(model Model, message mvu.Message) (Model, mvu.Command) {
 `View` maps the model to a Gio `layout.Widget`.
 
 ```go
-runtime.View = func(model Model) layout.Widget {
+func view(model Model) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
 		// Draw using regular Gio operations and widgets.
 		return layout.Dimensions{Size: gtx.Constraints.Max}
@@ -230,9 +232,9 @@ Available helpers:
 - `mvu.DoSequence(cmds...)` concatenates commands so they run in order.
 - `cmd.Trace(name)` logs command start, completion, and failure information.
 
-Command errors are caught by the runtime and printed as `Command Error: ...`. If you want errors to affect the model, return an error message value instead of returning a non-nil Go error.
+Command errors are caught by the loop and printed as `Command Error: ...`. If you want errors to affect the model, return an error message value instead of returning a non-nil Go error.
 
-## Rendering without `Runtime`
+## Rendering without the MVU loop
 
 You can also use `Window` directly when you only need reactive rendering and do not need the full MVU loop.
 
@@ -267,21 +269,23 @@ func main() {
 
 ## API overview
 
-### `Runtime[Model]`
+### `Run` and `Loop`
 
 ```go
-type Runtime[Model any] struct {
-	Window *Window
-	Init   func() (Model, Command)
-	Update func(model Model, message Message) (Model, Command)
-	View   func(model Model) layout.Widget
-}
+func Run[Model any](w *Window,
+	init func() (Model, Command),
+	update func(Model, Message) (Model, Command),
+	view func(Model) layout.Widget,
+	layers ...rx.Observable[layout.Widget]) error
+
+func Loop[Model any](messages rx.Observable[Message],
+	init func() (Model, Command),
+	update func(Model, Message) (Model, Command),
+) (models rx.Observable[Model], runner rx.Subscription)
 ```
 
-- `NewRuntime[Model](options ...app.Option) *Runtime[Model]` creates a runtime and its window.
-- `Run(layers ...rx.Observable[layout.Widget]) error` starts the MVU loop and renders the runtime view after any additional layers.
-
-Additional layers are useful for persistent backgrounds, overlays, animations, or debug UI that are driven by independent observables.
+- `Run` starts the MVU loop on a window and renders the view mapped over the models after any additional layers. Additional layers are useful for persistent backgrounds, overlays, animations, or debug UI that are driven by independent observables.
+- `Loop` is the message/command loop alone, for apps that own their rendering — e.g. a spectrum window whose `Render` takes a theme-fed layer builder. It returns the cold models observable (seed first; apply `Publish().AutoConnect(N)` for N consumers) and the command runner subscription (`defer func() { runner.Unsubscribe(); runner.Wait() }()`). Commands returned by `update` — including long-running streams — emit messages that feed back into the loop; a command error is contained to that command.
 
 ### `Window`
 
@@ -322,7 +326,7 @@ go run .
 
 - Gio's frame protocol is handled on a single goroutine inside `Window.Render`, which avoids deadlocks around `FrameEvent` handling.
 - Layer observables are subscribed concurrently and stored as an atomic snapshot. Updating a layer invalidates the window so Gio schedules a new frame.
-- `MessageOp` collection is scoped to the frame's `op.Ops`, allowing view code to emit messages without direct access to the runtime.
+- `MessageOp` collection is scoped to the frame's `op.Ops`, allowing view code to emit messages without direct access to the loop.
 - `mvu` deliberately keeps messages untyped at the boundary. Use concrete message structs and type switches in your application for clarity.
 
 ## Requirements
