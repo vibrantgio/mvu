@@ -1,6 +1,7 @@
 package mvu
 
 import (
+	"context"
 	"log"
 	"sync/atomic"
 
@@ -56,14 +57,14 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 
 	var layersSub rx.Subscription
 	if len(layers) > 0 {
-		layersSub = rx.CombineLatest(layers...).Subscribe(func(next []layout.Widget, err error, done bool) {
+		layersSub = rx.CombineLatest(layers...).Subscribe(rx.GoroutineContext(), func(next []layout.Widget, err error, done bool) {
 			if !done && next != nil {
 				cp := make([]layout.Widget, len(next))
 				copy(cp, next)
 				current.Store(&cp)
 				w.window.Invalidate()
 			}
-		}, rx.Goroutine)
+		})
 	}
 
 	loop := rx.Observable[struct{}](func(observe rx.Observer[struct{}], scheduler rx.Scheduler, subscriber rx.Subscriber) {
@@ -105,5 +106,5 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 		})
 	})
 
-	return loop.Subscribe(func(struct{}, error, bool) {}, rx.NewScheduler())
+	return loop.Subscribe(context.Background(), func(struct{}, error, bool) {})
 }

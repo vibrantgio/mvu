@@ -18,13 +18,13 @@ type Add struct{ N int }
 func collect(models rx.Observable[int]) (func() []int, rx.Subscription) {
 	var mu sync.Mutex
 	var seen []int
-	sub := models.Subscribe(func(next int, err error, done bool) {
+	sub := models.Subscribe(rx.GoroutineContext(), func(next int, err error, done bool) {
 		if !done {
 			mu.Lock()
 			seen = append(seen, next)
 			mu.Unlock()
 		}
-	}, rx.Goroutine)
+	})
 	snapshot := func() []int {
 		mu.Lock()
 		defer mu.Unlock()
