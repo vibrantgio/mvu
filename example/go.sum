@@ -25,8 +25,8 @@ github.com/vibrantgio/font v0.0.3 h1:r4ZA9ztyix+Bt5/hEMws5Z1T2G5DYWOSqFBLxd9cD0M
 github.com/vibrantgio/font v0.0.3/go.mod h1:iEdTTht8akBBAiO8VeIbegbvNImcWSigy/JuL2SobBA=
 github.com/vibrantgio/gradient v0.0.2 h1:b+HaGro78JUbpYzvvJKL9Fn6L3MPIfRgYcFFgxcSS/E=
 github.com/vibrantgio/gradient v0.0.2/go.mod h1:gmSGqeUXHZs+rcaOYsN/xnbRtV78khG/kpESTTu7xN4=
-github.com/vibrantgio/ivg v0.1.3 h1:zmPGUZYBBLcuCOeKjRs30GR1pvvRBl7zjuYDC62tOHc=
-github.com/vibrantgio/ivg v0.1.3/go.mod h1:rS6gd0W26G7DG5qsn469p48grz9sKSoSf/yDK18MXwA=
+github.com/vibrantgio/ivg v0.1.4 h1:61IX9sPxIiDxlXaGWGlE1g/9rcUbMvpAwaDegPlO8KI=
+github.com/vibrantgio/ivg v0.1.4/go.mod h1:EdiXcvBbdU5mct6OySKJm8XwgFXflTONARfAFKLIjZo=
 github.com/vibrantgio/ivg/raster/gio v0.1.5 h1:DWbPRYzPtYlItcQw7B4noqUepgvcyUIIsy4PWCr7/zc=
 github.com/vibrantgio/ivg/raster/gio v0.1.5/go.mod h1:YdIdqkd2IcXzGaDFWHiCGS3pPmj0d6OHYgKeK4BZJM0=
 github.com/vibrantgio/mvu v0.4.0 h1:00WxsVgwMNtjutfKCcGtijOFmC6loOGT2hAPF4FuJ5s=
