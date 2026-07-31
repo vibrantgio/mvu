@@ -3,7 +3,7 @@ module github.com/vibrantgio/mvu
 go 1.24.0
 
 require (
-	gioui.org v0.10.0
+	gioui.org v0.10.1
 	github.com/reactivego/rx v0.3.0
 )
 

@@ -3,8 +3,8 @@ module github.com/vibrantgio/mvu/example
 go 1.24.1
 
 require (
-	gioui.org v0.10.0
-	gioui.org/x v0.9.0
+	gioui.org v0.10.1
+	gioui.org/x v0.10.1
 	github.com/fogleman/ease v0.0.0-20170301025033-8da417bf1776
 	github.com/reactivego/rx v0.3.0
 	github.com/vibrantgio/backdrop v0.0.2
