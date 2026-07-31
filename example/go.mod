@@ -7,14 +7,14 @@ require (
 	gioui.org/x v0.10.1
 	github.com/fogleman/ease v0.0.0-20170301025033-8da417bf1776
 	github.com/reactivego/rx v0.3.0
-	github.com/vibrantgio/backdrop v0.0.2
-	github.com/vibrantgio/circle v0.0.3
-	github.com/vibrantgio/font v0.0.3
-	github.com/vibrantgio/gradient v0.0.2
-	github.com/vibrantgio/ivg/raster/gio v0.1.5
-	github.com/vibrantgio/mvu v0.4.1
-	github.com/vibrantgio/style v0.0.3
-	github.com/vibrantgio/textdraw v0.0.3
+	github.com/vibrantgio/backdrop v0.0.3
+	github.com/vibrantgio/circle v0.0.4
+	github.com/vibrantgio/font v0.0.4
+	github.com/vibrantgio/gradient v0.0.3
+	github.com/vibrantgio/ivg/raster/gio v0.1.7
+	github.com/vibrantgio/mvu v0.4.2
+	github.com/vibrantgio/style v0.0.5
+	github.com/vibrantgio/textdraw v0.0.4
 	golang.org/x/exp/shiny v0.0.0-20260727155853-b88d891fe743
 )
 
@@ -23,7 +23,7 @@ require (
 	gioui.org/shader v1.0.8 // indirect
 	github.com/go-text/typesetting v0.3.4 // indirect
 	github.com/reactivego/scheduler v0.2.0 // indirect
-	github.com/vibrantgio/ivg v0.1.4 // indirect
+	github.com/vibrantgio/ivg v0.1.5 // indirect
 	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743 // indirect
 	golang.org/x/image v0.44.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
