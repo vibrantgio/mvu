@@ -32,10 +32,10 @@ func (w *Window) Messages() rx.Observable[Message] {
 	return rx.Map(rx.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
 }
 
-// Render drives the Gio v0.9 event loop. The returned subscription terminates
+// Render drives the Gio event loop. The returned subscription terminates
 // when the window emits an `app.DestroyEvent`.
 //
-// Gio v0.9 enforces a synchronous protocol: after delivering a `FrameEvent`,
+// Gio has enforced a synchronous protocol since v0.9: after delivering a `FrameEvent`,
 // the OS-side `deliverEvent` enters a select that can either receive the
 // rendered frame on `e.frames` or send `theFlushEvent` on `e.events`. Whoever
 // completes first wins, and if the flush is delivered before `Frame()` is

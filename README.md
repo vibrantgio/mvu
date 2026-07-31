@@ -33,7 +33,7 @@ This keeps state changes explicit while preserving the flexibility of Gio widget
 - `MessageOp` for emitting messages from inside Gio layout code.
 - Reactive window renderer that composes one or more observable widget layers.
 - Direct access to the underlying `*app.Window` when needed.
-- Compatible with Gio `v0.9.0`.
+- Compatible with Gio `v0.10.1`.
 
 ## Installation
 
@@ -331,10 +331,10 @@ go run .
 
 ## Requirements
 
-- Go `1.23.8` or newer for the root module.
-- Gio `v0.9.0`.
-- `github.com/reactivego/rx` `v0.2.2`.
+- Go `1.25.1` or newer for the root module.
+- Gio `v0.10.1`.
+- `github.com/reactivego/rx` `v0.3.0`.
 
 ## License
 
-No license file is currently included in this repository.
+MIT — see [LICENSE](./LICENSE).
