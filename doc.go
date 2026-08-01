@@ -1,4 +1,4 @@
-// Package mvu is the Model-View-Update runtime at the root of the VibrantGio
+// Package mvu is the Model-View-Update runtime at the root of the Vibrant Gio
 // stack: a Gio window, an Elm-shaped reducer over it, and rx observables as
 // the wiring between the two. It is tier 0 of ADR-001 and imports nothing else
 // in the organization — spectrum wraps its [Window] to scope a theme, and

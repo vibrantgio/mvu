@@ -1,6 +1,6 @@
 # AGENTS.md — mvu
 
-The Model-View-Update runtime every VibrantGio application is built on: a
+The Model-View-Update runtime every Vibrant Gio application is built on: a
 Gio window driven by an MVU loop whose views are
 `rx.Observable[layout.Widget]` layers — `NewWindow`, `Loop` and `Run`,
 `Message` and `Command`, and `MessageOp` for sending a message from inside
