@@ -10,13 +10,12 @@ import (
 	"gioui.org/gesture"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/x/richtext"
 
 	"github.com/reactivego/rx"
-	"github.com/vibrantgio/font/roboto/regular/normal"
 	"github.com/vibrantgio/mvu"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 func main() {
@@ -36,7 +35,10 @@ func Content() layout.Widget {
 	blue := color.NRGBA{B: 170, A: 255}
 	red := color.NRGBA{R: 170, A: 255}
 
-	faces := []font.FontFace{normal.FontFace()}
+	// The theme's Typography supplies the shaper and the typeface: the spans
+	// name Roboto by face and keep their own per-span sizes.
+	typ := tokens.DefaultTypography
+	roboto := font.Font{Typeface: font.Typeface(typ.BodyLarge.Typeface)}
 
 	// define the text that you want to present. This can be persisted
 	// across frames, recomputed every frame, or modified in any way between
@@ -46,37 +48,37 @@ func Content() layout.Widget {
 			Content: "Hello ",
 			Color:   black,
 			Size:    unit.Sp(24),
-			Font:    faces[0].Font,
+			Font:    roboto,
 		},
 		{
 			Content: "in ",
 			Color:   green,
 			Size:    unit.Sp(36),
-			Font:    faces[0].Font,
+			Font:    roboto,
 		},
 		{
 			Content: "rich ",
 			Color:   blue,
 			Size:    unit.Sp(30),
-			Font:    faces[0].Font,
+			Font:    roboto,
 		},
 		{
 			Content: "text\n",
 			Color:   red,
 			Size:    unit.Sp(40),
-			Font:    faces[0].Font,
+			Font:    roboto,
 		},
 		{
 			Content:     "Interact with me!",
 			Color:       black,
 			Size:        unit.Sp(40),
-			Font:        faces[0].Font,
+			Font:        roboto,
 			Interactive: true,
 		},
 	}
 	state := richtext.InteractiveText{}
 	index := 0
-	shaper := text.NewShaper(text.WithCollection(faces))
+	shaper := typ.Shaper()
 
 	return func(gtx layout.Context) layout.Dimensions {
 

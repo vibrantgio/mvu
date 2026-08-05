@@ -13,14 +13,13 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/text"
+	"gioui.org/unit"
 	"gioui.org/widget"
 
 	"github.com/reactivego/rx"
 	"github.com/vibrantgio/backdrop"
-	"github.com/vibrantgio/font/roboto/regular/normal"
 	"github.com/vibrantgio/mvu"
-	"github.com/vibrantgio/style"
+	"github.com/vibrantgio/spectrum/tokens"
 )
 
 func main() {
@@ -41,7 +40,15 @@ func Edit() {
 }
 
 func Input(ax, ay float32, initial string, textColor, selectColor, backColor color.Color) rx.Observable[layout.Widget] {
-	shaper := text.NewShaper(text.WithCollection([]font.FontFace{normal.FontFace()}))
+	// The theme's Typography supplies both the shaper (Roboto, system fonts
+	// excluded) and the editor's type role; BodyLarge matches the 16 sp body
+	// text this example always used.
+	typ := tokens.DefaultTypography
+	shaper := typ.Shaper()
+	editFont := font.Font{Typeface: font.Typeface(typ.BodyLarge.Typeface)}
+	if typ.BodyLarge.Weight != 0 {
+		editFont.Weight = tokens.FontWeight(typ.BodyLarge.Weight)
+	}
 	return rx.Defer(func() rx.Observable[layout.Widget] {
 		edit := widget.Editor{}
 		edit.SetText(initial)
@@ -68,7 +75,7 @@ func Input(ax, ay float32, initial string, textColor, selectColor, backColor col
 			paint.ColorOp{Color: c}.Add(gtx.Ops)
 			selectMaterial := m.Stop()
 
-			edit.Layout(gtx, shaper, style.BodyText1.Font, style.BodyText1.Size, textMaterial, selectMaterial)
+			edit.Layout(gtx, shaper, editFont, unit.Sp(typ.BodyLarge.Size), textMaterial, selectMaterial)
 
 			return layout.Dimensions{Size: size}
 		})
