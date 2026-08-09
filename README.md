@@ -31,6 +31,7 @@ This keeps state changes explicit while preserving the flexibility of Gio widget
 - `Command` abstraction backed by `github.com/reactivego/rx` observables.
 - Helpers for no-op, sequential, and concurrent commands.
 - `MessageOp` for emitting messages from inside Gio layout code.
+- `stream.Value`, the one observable primitive for state several consumers watch.
 - Reactive window renderer that composes one or more observable widget layers.
 - Direct access to the underlying `*app.Window` when needed.
 - Compatible with Gio `v0.10.1`.
@@ -305,6 +306,31 @@ Call `Add(gtx.Ops)` during layout to enqueue a message for the runtime/window me
 ```go
 mvu.MessageOp{Message: SomeMessage{}}.Add(gtx.Ops)
 ```
+
+### `stream`
+
+`mvu/stream` holds one function. `Value[T](seed)` returns the two sides of a
+current-value stream: an `rx.Observer[T]` the producer writes through, and an
+`rx.Observable[T]` any number of consumers may subscribe to and unsubscribe
+from over the life of the process. A consumer sees the current value the
+moment it subscribes, then follows.
+
+```go
+send, obs := stream.Value(preferences.Default)
+```
+
+Reach for it when a slow-changing value is watched by several places —
+persisted preferences, the OS theme — and never for events, because it
+conflates: a consumer that falls behind converges on the newest value instead
+of replaying the ones it missed. Events belong in the message loop.
+
+It exists because a bare `rx.Subject` is the wrong spelling for this: it leaks
+a subscription slot on every `Unsubscribe`, so the 33rd subscriber on one
+Subject fails, and the departed subscriber's frozen cursor eventually blocks
+the producer forever. `stream.Value` composes `rx.Behavior` instead, whose
+subscriber set is a map and whose write never blocks. One arrival cycle costs
+1.3 µs against a bare Subject's 51.8 µs on an M1 Max, and an idle stream costs
+no goroutine at all.
 
 ## Examples
 

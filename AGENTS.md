@@ -3,8 +3,9 @@
 The Model-View-Update runtime every Vibrant Gio application is built on: a
 Gio window driven by an MVU loop whose views are
 `rx.Observable[layout.Widget]` layers — `NewWindow`, `Loop` and `Run`,
-`Message` and `Command`, and `MessageOp` for sending a message from inside
-a layout.
+`Message` and `Command`, `MessageOp` for sending a message from inside a
+layout, and `stream.Value`, the organization's one sanctioned observable
+for state that several consumers watch.
 
 **Layer.** Tier 0 of ADR-001's stack, `mvu → spectrum → prism → pulse →
 cadence → markdown`, and its base. Outside the organization it needs only
