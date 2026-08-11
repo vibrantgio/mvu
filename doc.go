@@ -2,7 +2,7 @@
 // stack: a Gio window, an Elm-shaped reducer over it, and rx observables as
 // the wiring between the two. It is tier 0 of ADR-001 and imports nothing else
 // in the organization — theme wraps its [Window] to scope a theme, and
-// components, effects, cadence and markdown all draw inside a layer it drives.
+// components, effects, patterns and markdown all draw inside a layer it drives.
 //
 // You write four things: a Model type, message types, an Init returning the
 // seed model and a startup command, and an Update reducing a message onto a
