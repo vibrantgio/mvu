@@ -40,7 +40,7 @@
 //
 // # Why not a wrapper around rx.Subject either
 //
-// github.com/vibrantgio/prism/coordination wrapped rx.Subject in a
+// github.com/vibrantgio/components/coordination wrapped rx.Subject in a
 // subscription registry to fix both of those, and it did — in 292 lines, with
 // a 64-subscriber ceiling as a leak detector, and still delivering through a
 // private per-subscription rx.Subject. It therefore kept the third defect: a

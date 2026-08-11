@@ -2,7 +2,7 @@
 // stack: a Gio window, an Elm-shaped reducer over it, and rx observables as
 // the wiring between the two. It is tier 0 of ADR-001 and imports nothing else
 // in the organization — theme wraps its [Window] to scope a theme, and
-// prism, pulse, cadence and markdown all draw inside a layer it drives.
+// components, pulse, cadence and markdown all draw inside a layer it drives.
 //
 // You write four things: a Model type, message types, an Init returning the
 // seed model and a startup command, and an Update reducing a message onto a
@@ -30,7 +30,7 @@
 // The collector is keyed on the exact *op.Ops the current frame is being
 // recorded into, and an Add against any other buffer is dropped silently — no
 // panic, no error, just a message that never arrives. That is a real trap, not
-// a theoretical one: a widget drawn through prism/cache.FrameCache records into
+// a theoretical one: a widget drawn through components/cache.FrameCache records into
 // the cache's own private op.Ops, so a MessageOp added inside that body goes
 // nowhere, and on a cache hit the body does not run at all. Emit from the
 // widget that owns gtx.Ops, never from inside a cached recording.
@@ -51,7 +51,7 @@
 // drained, and because that channel holds exactly one MessageOp the event
 // goroutine blocks on the second one it tries to hand over, and the window
 // stops painting. Neither failure logs anything. Keep N static — never
-// subscribe the model observable from inside a per-row prism/keyed factory,
+// subscribe the model observable from inside a per-row components/keyed factory,
 // which attaches after the seed has fired — and let a test count the
 // subscriptions instead of tuning the number by hand.
 //
