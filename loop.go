@@ -64,7 +64,7 @@ func Loop[Model any](
 // the window is destroyed.
 //
 // Run renders on the raw mvu Window; view receives only the Model. An app
-// that needs theme-aware layers (e.g. a spectrum window, whose Render takes
+// that needs theme-aware layers (e.g. a theme window, whose Render takes
 // a layer builder fed by the theme observable) composes Loop with its own
 // rendering instead — see Loop.
 func Run[Model any](

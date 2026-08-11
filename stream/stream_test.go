@@ -63,7 +63,7 @@ func TestASubscriberSeesTheSeed(t *testing.T) {
 
 // TestALateSubscriberSeesTheCurrentValue is the other half: a write with
 // nobody listening is not lost, it becomes the value the next subscriber
-// starts from. This is what spectrum/preferences needs — a settings screen
+// starts from. This is what theme/preferences needs — a settings screen
 // saves, a window opens later, and the window must not start from the value
 // the file held at launch.
 func TestALateSubscriberSeesTheCurrentValue(t *testing.T) {
@@ -312,7 +312,7 @@ func TestUnsubscribeDeliversNoCompletion(t *testing.T) {
 // TestAnIdleStreamCostsNoGoroutine is the reason the source hands its observer
 // back rather than being an rx.Subject the Connectable forwards from: a stream
 // that nobody is watching runs nothing at all. A per-path registry that never
-// shrinks — spectrum/preferences has one — would otherwise accumulate a
+// shrinks — theme/preferences has one — would otherwise accumulate a
 // forwarding goroutine per path for the life of the process.
 func TestAnIdleStreamCostsNoGoroutine(t *testing.T) {
 	runtime.GC()

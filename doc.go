@@ -1,14 +1,14 @@
 // Package mvu is the Model-View-Update runtime at the root of the Vibrant Gio
 // stack: a Gio window, an Elm-shaped reducer over it, and rx observables as
 // the wiring between the two. It is tier 0 of ADR-001 and imports nothing else
-// in the organization — spectrum wraps its [Window] to scope a theme, and
+// in the organization — theme wraps its [Window] to scope a theme, and
 // prism, pulse, cadence and markdown all draw inside a layer it drives.
 //
 // You write four things: a Model type, message types, an Init returning the
 // seed model and a startup command, and an Update reducing a message onto a
 // model. [Run] is the whole application for a single window; [Loop] is the
 // reducer alone, for applications that own their rendering — wrapping the
-// window in a theme, as spectrum/window does, is the usual reason.
+// window in a theme, as theme/window does, is the usual reason.
 //
 //	w := mvu.NewWindow(app.Title("Counter"))
 //	if err := mvu.Run(w, Init, Update, View); err != nil { ... }

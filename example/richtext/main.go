@@ -15,7 +15,7 @@ import (
 
 	"github.com/reactivego/rx"
 	"github.com/vibrantgio/mvu"
-	"github.com/vibrantgio/spectrum/tokens"
+	"github.com/vibrantgio/theme/tokens"
 )
 
 func main() {

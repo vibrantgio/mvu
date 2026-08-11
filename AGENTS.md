@@ -7,18 +7,17 @@ Gio window driven by an MVU loop whose views are
 layout, and `stream.Value`, the organization's one sanctioned observable
 for state that several consumers watch.
 
-**Layer.** Tier 0 of ADR-001's stack, `mvu → spectrum → prism → pulse →
+**Layer.** Tier 0 of ADR-001's stack, `mvu → theme → prism → pulse →
 cadence → markdown`, and its base. Outside the organization it needs only
 `gioui.org` and `github.com/reactivego/rx`. Its root module imports nothing
 else in the organization. Its nested `mvu/example` module adds `backdrop`,
-`circle`, `font`, `gradient`, `ivg`, `ivg/raster/gio`, `spectrum` and
-`textdraw` — those edges are the nested module's and not the root's.
-Imported by `cadence`, `prism`, `pulse` and `spectrum`. Outside the tier
-table, also by the demo module `prism/gallery` and all seven workbench
-applications. Both directions are measured rather than typed —
-`scripts/check-layers.sh --edges` reports the graph and
-`scripts/sync-agents.sh` renders these sentences from it — so correcting
-them here changes nothing.
+`circle`, `font`, `gradient`, `ivg`, `ivg/raster/gio`, `textdraw` and
+`theme` — those edges are the nested module's and not the root's. Imported
+by `cadence`, `prism`, `pulse` and `theme`. Outside the tier table, also by
+the demo module `prism/gallery` and all seven workbench applications. Both
+directions are measured rather than typed — `scripts/check-layers.sh
+--edges` reports the graph and `scripts/sync-agents.sh` renders these
+sentences from it — so correcting them here changes nothing.
 
 **Read the canonical guide before you write code against this module.** It is
 the organization's one agent guide — the module inventory with current tags,
