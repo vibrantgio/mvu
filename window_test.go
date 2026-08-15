@@ -142,9 +142,10 @@ func TestRegistrantMayRegisterDuringNotification(t *testing.T) {
 // The tests below exercise the ViewEvents seam the way the tests above
 // exercise OnConfigure: Window.Render's `case app.ViewEvent:` arm calls
 // forwardViewEvent, so driving that method drives the delivery contract
-// without a real OS window. The events fed in are app.AppKitViewEvent values
-// because that is the concrete type behind the app.ViewEvent interface on the
-// platform this ships for first; the seam itself is platform-agnostic.
+// without a real OS window. The events fed in come from makeViewEvent in the
+// per-platform viewevent_*_test.go files — app.ViewEvent's unexported method
+// admits only gioui.org/app's own types, and each platform's build compiles
+// only its own concrete type. The seam itself is platform-agnostic.
 
 // collectViewEvents subscribes w.ViewEvents() and returns a snapshot func.
 func collectViewEvents(t *testing.T, w *Window) (func() []app.ViewEvent, rx.Subscription) {
@@ -188,7 +189,7 @@ func awaitViewEvents(t *testing.T, snapshot func() []app.ViewEvent, cond func([]
 // attaches later.
 func TestViewEventsBuffersInitialEventForLateSubscriber(t *testing.T) {
 	w := NewWindow(app.Title("seam"))
-	initial := app.AppKitViewEvent{View: 0x1, Layer: 0x2}
+	initial := makeViewEvent(0x1)
 
 	w.forwardViewEvent(initial) // Render's arm fires before anyone subscribes
 
@@ -196,7 +197,7 @@ func TestViewEventsBuffersInitialEventForLateSubscriber(t *testing.T) {
 	defer sub.Unsubscribe()
 
 	seen := awaitViewEvents(t, snapshot, func(seen []app.ViewEvent) bool { return len(seen) > 0 })
-	if got, ok := seen[0].(app.AppKitViewEvent); !ok || got != initial {
+	if seen[0] != initial {
 		t.Fatalf("late subscriber received %v; want the buffered initial event %v", seen[0], initial)
 	}
 }
@@ -212,19 +213,19 @@ func TestViewEventsKeepsLatestOnOverflow(t *testing.T) {
 	capacity := cap(w.viewEvents)
 	total := capacity + 3
 	for i := 1; i <= total; i++ {
-		w.forwardViewEvent(app.AppKitViewEvent{View: uintptr(i), Layer: 0x2})
+		w.forwardViewEvent(makeViewEvent(uintptr(i)))
 	}
 
 	snapshot, sub := collectViewEvents(t, w)
 	defer sub.Unsubscribe()
 
 	seen := awaitViewEvents(t, snapshot, func(seen []app.ViewEvent) bool { return len(seen) >= capacity })
-	first, lastEv := seen[0].(app.AppKitViewEvent), seen[len(seen)-1].(app.AppKitViewEvent)
-	if want := uintptr(total - capacity + 1); first.View != want {
-		t.Fatalf("oldest surviving event has View=%#x; want %#x (evict-oldest)", first.View, want)
+	first, lastEv := viewIDOf(seen[0]), viewIDOf(seen[len(seen)-1])
+	if want := uintptr(total - capacity + 1); first != want {
+		t.Fatalf("oldest surviving event has id %#x; want %#x (evict-oldest)", first, want)
 	}
-	if lastEv.View != uintptr(total) {
-		t.Fatalf("latest event has View=%#x; want %#x (the newest event must never be dropped)", lastEv.View, uintptr(total))
+	if lastEv != uintptr(total) {
+		t.Fatalf("latest event has id %#x; want %#x (the newest event must never be dropped)", lastEv, uintptr(total))
 	}
 }
 
@@ -236,16 +237,16 @@ func TestViewEventsDeliversInOrderWhileSubscribed(t *testing.T) {
 	snapshot, sub := collectViewEvents(t, w)
 	defer sub.Unsubscribe()
 
-	attach := app.AppKitViewEvent{View: 0x1, Layer: 0x2}
-	detach := app.AppKitViewEvent{} // the invalid event is a real event
+	attach := makeViewEvent(0x1)
+	detach := invalidViewEvent() // the invalid event is a real event
 	w.forwardViewEvent(attach)
 	w.forwardViewEvent(detach)
 
 	seen := awaitViewEvents(t, snapshot, func(seen []app.ViewEvent) bool { return len(seen) >= 2 })
-	if got := seen[0].(app.AppKitViewEvent); got != attach || !got.Valid() {
-		t.Fatalf("first event = %v (Valid()=%t); want the valid attach event", seen[0], got.Valid())
+	if got := seen[0]; got != attach || !got.Valid() {
+		t.Fatalf("first event = %v (Valid()=%t); want the valid attach event", got, got.Valid())
 	}
-	if got := seen[1].(app.AppKitViewEvent); got != detach || got.Valid() {
-		t.Fatalf("second event = %v (Valid()=%t); want the invalid detach event", seen[1], got.Valid())
+	if got := seen[1]; got != detach || got.Valid() {
+		t.Fatalf("second event = %v (Valid()=%t); want the invalid detach event", got, got.Valid())
 	}
 }
