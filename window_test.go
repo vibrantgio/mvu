@@ -1,9 +1,14 @@
 package mvu
 
 import (
+	"slices"
+	"sync"
 	"testing"
+	"time"
 
 	"gioui.org/app"
+
+	"github.com/reactivego/rx"
 )
 
 // The tests below exercise the Option/OnConfigure seam directly, the way
@@ -131,5 +136,116 @@ func TestRegistrantMayRegisterDuringNotification(t *testing.T) {
 	w.Option(app.Title("changed again"))
 	if lateCalls != 1 {
 		t.Fatalf("registrant added during a previous notification ran %d times; want 1", lateCalls)
+	}
+}
+
+// The tests below exercise the ViewEvents seam the way the tests above
+// exercise OnConfigure: Window.Render's `case app.ViewEvent:` arm calls
+// forwardViewEvent, so driving that method drives the delivery contract
+// without a real OS window. The events fed in are app.AppKitViewEvent values
+// because that is the concrete type behind the app.ViewEvent interface on the
+// platform this ships for first; the seam itself is platform-agnostic.
+
+// collectViewEvents subscribes w.ViewEvents() and returns a snapshot func.
+func collectViewEvents(t *testing.T, w *Window) (func() []app.ViewEvent, rx.Subscription) {
+	t.Helper()
+	var mu sync.Mutex
+	var seen []app.ViewEvent
+	sub := w.ViewEvents().Subscribe(rx.GoroutineContext(), func(next app.ViewEvent, err error, done bool) {
+		if !done {
+			mu.Lock()
+			seen = append(seen, next)
+			mu.Unlock()
+		}
+	})
+	snapshot := func() []app.ViewEvent {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(seen)
+	}
+	return snapshot, sub
+}
+
+// awaitViewEvents polls snapshot until cond holds or the timeout expires.
+func awaitViewEvents(t *testing.T, snapshot func() []app.ViewEvent, cond func([]app.ViewEvent) bool) []app.ViewEvent {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if seen := snapshot(); cond(seen) {
+			return seen
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("condition not met before timeout; view events seen: %v", snapshot())
+	return nil
+}
+
+// TestViewEventsBuffersInitialEventForLateSubscriber pins the crux of the
+// delivery contract: the platform delivers the first view event before the
+// first frame — before application code has typically subscribed — and it
+// must not be lost. The buffered channel is the replay: an event forwarded
+// with no subscriber waits in the buffer and reaches the subscriber that
+// attaches later.
+func TestViewEventsBuffersInitialEventForLateSubscriber(t *testing.T) {
+	w := NewWindow(app.Title("seam"))
+	initial := app.AppKitViewEvent{View: 0x1, Layer: 0x2}
+
+	w.forwardViewEvent(initial) // Render's arm fires before anyone subscribes
+
+	snapshot, sub := collectViewEvents(t, w)
+	defer sub.Unsubscribe()
+
+	seen := awaitViewEvents(t, snapshot, func(seen []app.ViewEvent) bool { return len(seen) > 0 })
+	if got, ok := seen[0].(app.AppKitViewEvent); !ok || got != initial {
+		t.Fatalf("late subscriber received %v; want the buffered initial event %v", seen[0], initial)
+	}
+}
+
+// TestViewEventsKeepsLatestOnOverflow pins the eviction policy: when the
+// buffer is full and nothing is subscribed, the OLDEST event is dropped for
+// the new one — never the reverse. Gio retains a view event's handles only
+// until the next view event, so under overflow the stale events are the
+// expendable ones and the latest must survive; drop-newest would hand a
+// subscriber a dead handle and lose the live one.
+func TestViewEventsKeepsLatestOnOverflow(t *testing.T) {
+	w := NewWindow(app.Title("seam"))
+	capacity := cap(w.viewEvents)
+	total := capacity + 3
+	for i := 1; i <= total; i++ {
+		w.forwardViewEvent(app.AppKitViewEvent{View: uintptr(i), Layer: 0x2})
+	}
+
+	snapshot, sub := collectViewEvents(t, w)
+	defer sub.Unsubscribe()
+
+	seen := awaitViewEvents(t, snapshot, func(seen []app.ViewEvent) bool { return len(seen) >= capacity })
+	first, lastEv := seen[0].(app.AppKitViewEvent), seen[len(seen)-1].(app.AppKitViewEvent)
+	if want := uintptr(total - capacity + 1); first.View != want {
+		t.Fatalf("oldest surviving event has View=%#x; want %#x (evict-oldest)", first.View, want)
+	}
+	if lastEv.View != uintptr(total) {
+		t.Fatalf("latest event has View=%#x; want %#x (the newest event must never be dropped)", lastEv.View, uintptr(total))
+	}
+}
+
+// TestViewEventsDeliversInOrderWhileSubscribed asserts plain in-order flow
+// when a subscriber is attached before events arrive — the ordinary case once
+// an application subscribes ahead of starting Render.
+func TestViewEventsDeliversInOrderWhileSubscribed(t *testing.T) {
+	w := NewWindow(app.Title("seam"))
+	snapshot, sub := collectViewEvents(t, w)
+	defer sub.Unsubscribe()
+
+	attach := app.AppKitViewEvent{View: 0x1, Layer: 0x2}
+	detach := app.AppKitViewEvent{} // the invalid event is a real event
+	w.forwardViewEvent(attach)
+	w.forwardViewEvent(detach)
+
+	seen := awaitViewEvents(t, snapshot, func(seen []app.ViewEvent) bool { return len(seen) >= 2 })
+	if got := seen[0].(app.AppKitViewEvent); got != attach || !got.Valid() {
+		t.Fatalf("first event = %v (Valid()=%t); want the valid attach event", seen[0], got.Valid())
+	}
+	if got := seen[1].(app.AppKitViewEvent); got != detach || got.Valid() {
+		t.Fatalf("second event = %v (Valid()=%t); want the invalid detach event", seen[1], got.Valid())
 	}
 }

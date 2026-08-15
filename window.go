@@ -18,16 +18,28 @@ import (
 type Window struct {
 	window     *app.Window
 	messageOps chan MessageOp
+	viewEvents chan app.ViewEvent
 
 	configMu    sync.Mutex
 	onConfigure []func()
 	configured  bool // the first FrameEvent has been delivered
 }
 
+// viewEventBuffer is the capacity of the per-window view-event channel. View
+// events come in attach/detach pairs — one valid event when the native view
+// joins a window, one invalid event when it leaves — so four holds two full
+// cycles, more than accumulate in practice before a subscriber attaches.
+// [Window.forwardViewEvent] documents what happens when it fills anyway.
+const viewEventBuffer = 4
+
 func NewWindow(options ...app.Option) *Window {
 	w := new(app.Window)
 	w.Option(options...)
-	return &Window{window: w, messageOps: make(chan MessageOp, 1)}
+	return &Window{
+		window:     w,
+		messageOps: make(chan MessageOp, 1),
+		viewEvents: make(chan app.ViewEvent, viewEventBuffer),
+	}
 }
 
 // Window returns the underlying Gio window. The raw handle stays reachable —
@@ -120,6 +132,65 @@ func (w *Window) Messages() rx.Observable[Message] {
 	return rx.Map(rx.Recv(w.messageOps), func(msgOp MessageOp) Message { return msgOp.Message })
 }
 
+// ViewEvents returns the window's platform view events — the [app.ViewEvent]
+// values (app.AppKitViewEvent on macOS, app.X11ViewEvent on X11, and so on)
+// through which Gio hands out the native window handles. Platform adapters
+// subscribe here to augment the native view — installing a drop target, for
+// example — and everything else can ignore this method entirely. It is
+// deliberately narrow: view events are the one Gio event class mvu forwards
+// beyond its own two, and no general unhandled-events stream exists or will.
+//
+// The stream is fed by [Window.Render] and backed by a buffered per-window
+// channel in the same idiom as [Window.Messages]: subscribe it once — two
+// subscriptions would compete for the same channel — and expect completion
+// when the window is destroyed.
+//
+// The first view event is delivered before the window's first frame — before
+// any ConfigEvent or FrameEvent, and therefore almost certainly before the
+// application subscribes. It is not lost: events sent before (or between)
+// subscriptions sit in the channel's buffer, so a late subscriber receives
+// everything still buffered, the initial attach event included. Only if more
+// than four view events accumulate with no subscriber draining them does the
+// buffer overflow, and then the oldest buffered event is evicted for the new
+// one (see [Window.forwardViewEvent] for why keep-latest is the only safe
+// eviction). Subscribing before [Window.Render] starts — the natural order in
+// an application, since Render blocks its goroutine — makes overflow
+// unreachable.
+//
+// An invalid event (Valid() == false) is a real event, not an error: the
+// native view left its window, and every handle taken from the previous event
+// is dead. Subscribers must drop their references when it arrives.
+func (w *Window) ViewEvents() rx.Observable[app.ViewEvent] {
+	return rx.Recv(w.viewEvents)
+}
+
+// forwardViewEvent hands a view event from Render's event loop to the
+// ViewEvents channel without ever blocking the render goroutine — a
+// subscriber may not exist, and stalling the event loop on one would hang
+// every application that never calls ViewEvents.
+//
+// The policy on a full buffer is drop-OLDEST, never drop-newest: Gio retains
+// the handles in a view event only until the next view event is sent, so once
+// a newer event exists the buffered older ones describe dead handles. Keeping
+// the latest event means a subscriber always ends on the current state of the
+// native view; dropping the newest instead would preserve a stale handle —
+// the use-after-free shape — and lose the live one. Eviction is only reachable
+// when nothing is subscribed (see ViewEvents), so evicting cannot race a
+// delivery that already happened.
+func (w *Window) forwardViewEvent(e app.ViewEvent) {
+	for {
+		select {
+		case w.viewEvents <- e:
+			return
+		default:
+		}
+		select {
+		case <-w.viewEvents: // full: evict the oldest, then retry the send
+		default:
+		}
+	}
+}
+
 // Render drives the Gio event loop. The returned subscription terminates
 // when the window emits an `app.DestroyEvent`.
 //
@@ -174,6 +245,10 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 					close(w.messageOps)
 					w.messageOps = nil
 				}
+				if w.viewEvents != nil {
+					close(w.viewEvents)
+					w.viewEvents = nil
+				}
 				observe(struct{}{}, e.Err, true)
 				return
 			case app.FrameEvent:
@@ -190,6 +265,12 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 				for _, msgOp := range frameMessages {
 					w.messageOps <- msgOp
 				}
+			case app.ViewEvent:
+				// app.ViewEvent is an interface, so this arm matches every
+				// platform's concrete type (app.AppKitViewEvent, ...). It is
+				// the one event class forwarded beyond the two above; all
+				// other events stay dropped, deliberately — see ViewEvents.
+				w.forwardViewEvent(e)
 			}
 			again()
 		})

@@ -35,6 +35,21 @@
 // nowhere, and on a cache hit the body does not run at all. Emit from the
 // widget that owns gtx.Ops, never from inside a cached recording.
 //
+// # Platform handles arrive as view events
+//
+// A callback that fires outside any frame — an OS drag callback, a native
+// notification — has no gtx.Ops, so MessageOp cannot carry its message; the
+// only correct path is a channel of its own, wrapped in rx.Recv and merged
+// into [Loop]'s messages. The handles such a callback needs come from the
+// window: [Window.ViewEvents] forwards Gio's [app.ViewEvent] values (the
+// native view and layer on macOS, and so on), the one event class
+// [Window.Render] forwards beyond DestroyEvent and FrameEvent. The first view
+// event arrives before the first frame and is buffered until subscribed, so a
+// subscriber attaching in ordinary application order never misses it; the
+// full delivery contract — single subscription, buffer of four, keep-latest
+// on overflow, completion on destroy — is on the method. Applications without
+// a platform adapter never call it.
+//
 // # AutoConnect counts are load-bearing, and both errors are silent
 //
 // [Loop] returns the models observable and the command runner. Models emits the
@@ -54,6 +69,15 @@
 // subscribe the model observable from inside a per-row components/keyed factory,
 // which attaches after the seed has fired — and let a test count the
 // subscriptions instead of tuning the number by hand.
+//
+// What enters the count is subscriptions to models, nothing else. The
+// window's channel-backed streams — [Window.Messages] and [Window.ViewEvents]
+// — are outside the multicast: messages is an input Loop subscribes exactly
+// once (asserted by test, since Loop's own internal count is the same silent
+// arithmetic), and view events flow to a platform adapter without touching
+// the loop at all. Subscribing ViewEvents, or merging another rx.Recv-backed
+// message source into Loop's input, changes N by exactly zero; only a new
+// subscriber of the models observable moves it.
 //
 // # The window owns its Option boundary
 //

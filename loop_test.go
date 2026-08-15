@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -164,4 +165,45 @@ func TestLoopSurvivesCommandError(t *testing.T) {
 	in <- Add{N: 5}
 
 	await(t, snapshot, func(seen []int) bool { return len(seen) > 0 && last(seen) == 5 })
+}
+
+// TestLoopSubscribesMessagesExactlyOnce counts the cold subscriptions Loop
+// makes to its messages input, pinning the AutoConnect arithmetic doc.go calls
+// load-bearing: the internal Publish().AutoConnect(2) — models and commands —
+// must connect exactly once, subscribing the merged message sources exactly
+// once. Both drifts are silent (doc.go): too high never connects, so the
+// count stays 0 and the await below times out with no message reduced; too
+// low connects early or double-subscribes, and the count leaves 1. This is
+// the test that counts instead of hand-tuning — anyone adding a subscriber
+// path inside Loop (the way ViewEvents added one beside it on Window) must
+// keep this passing, not adjust the constant to match.
+func TestLoopSubscribesMessagesExactlyOnce(t *testing.T) {
+	in := make(chan Message, 8)
+	var subscriptions atomic.Int32
+	base := rx.Recv(in)
+	counted := rx.Observable[Message](func(observe rx.Observer[Message], scheduler rx.Scheduler, subscriber rx.Subscriber) {
+		subscriptions.Add(1)
+		base(observe, scheduler, subscriber)
+	})
+	update := func(m int, msg Message) (int, Command) {
+		if add, ok := msg.(Add); ok {
+			return m + add.N, DoNothing()
+		}
+		return m, DoNothing()
+	}
+
+	init := func() (int, Command) { return 0, DoNothing() }
+	models, runner := Loop(counted, init, update)
+	defer func() { runner.Unsubscribe(); runner.Wait() }()
+	snapshot, sub := collect(models)
+	defer sub.Unsubscribe()
+
+	in <- Add{N: 3}
+
+	// A reduced message proves the loop connected and is draining.
+	await(t, snapshot, func(seen []int) bool { return len(seen) > 0 && last(seen) == 3 })
+
+	if got := subscriptions.Load(); got != 1 {
+		t.Fatalf("Loop subscribed its messages input %d times; want exactly 1 (AutoConnect arithmetic drifted)", got)
+	}
 }
