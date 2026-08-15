@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	gioui.org v0.10.1
-	github.com/vibrantgio/mvu v0.5.0
+	github.com/vibrantgio/mvu v0.6.0
 )
 
 require (
