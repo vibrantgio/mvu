@@ -55,6 +55,19 @@
 // which attaches after the seed has fired — and let a test count the
 // subscriptions instead of tuning the number by hand.
 //
+// # The window owns its Option boundary
+//
+// Applying window options after construction makes Gio rebuild the native
+// window's configuration, which can silently undo any adjustment made
+// directly to the native handle. [Window.Option] therefore forwards to the
+// underlying window and then notifies every func registered with
+// [Window.OnConfigure]: once after the first frame — covering construction
+// options and Gio's own initial configuration — and again after every later
+// Option call. A platform adapter that pokes the native window registers
+// there and re-asserts its adjustment on each notification. The raw handle
+// from [Window.Window] stays available, but options applied through it
+// bypass the notification.
+//
 // # Threading
 //
 // [Window.Render] reads window events and calls Frame on one goroutine, because
