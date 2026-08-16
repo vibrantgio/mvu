@@ -14,7 +14,7 @@ else in the organization. Its nested `mvu/example` module adds `backdrop`,
 `circle`, `font`, `gradient`, `ivg`, `ivg/raster/gio`, `textdraw` and
 `theme` — those edges are the nested module's and not the root's. Imported
 by `components`, `effects`, `patterns` and `theme`. Outside the tier table,
-also by the demo module `components/gallery` and all seven workbench
+also by the demo module `components/gallery` and all eight workbench
 applications. Both directions are measured rather than typed —
 `scripts/check-layers.sh --edges` reports the graph and
 `scripts/sync-agents.sh` renders these sentences from it — so correcting
