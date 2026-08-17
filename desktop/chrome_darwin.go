@@ -40,7 +40,11 @@ func showWindowButtons(w *mvu.Window) {
 }
 
 func placeWindowButtons(center unit.Dp) {
-	C.vgio_desktop_place_buttons(C.double(center))
+	placeWindowButtonsAt(0, center)
+}
+
+func placeWindowButtonsAt(leading, center unit.Dp) {
+	C.vgio_desktop_place_buttons(C.double(leading), C.double(center))
 }
 
 func topInset() unit.Dp {

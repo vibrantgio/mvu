@@ -28,11 +28,28 @@ static _Atomic double vgio_desktop_leading = 0;
 // thread, read on the main thread by the re-assertion.
 static _Atomic double vgio_desktop_center = 0;
 
+// The requested leading edge for the buttons as a group, in points in from
+// the leading edge of the window frame; 0 asks for the system's own x.
+// Written from any thread, read on the main thread by the re-assertion.
+static _Atomic double vgio_desktop_lead = 0;
+
 // Whether the buttons currently stand where a request put them. Main thread
 // only. It exists so that dropping a request restores the system placement
 // exactly once, and so that nothing is touched at all in the overwhelmingly
 // common case of a window that never asked.
 static bool vgio_desktop_placed = false;
+
+// The horizontal counterpart of vgio_desktop_placed, and the record that
+// makes its restore exact. The vertical restore recomputes the system's own
+// centring from the strip and the button height; the x positions have no
+// such formula — they are AppKit's to choose — so the first horizontal move
+// records them, per button in its superview's space plus the group's leading
+// edge in window coordinates, and both the move and the restore are stated
+// against that record: absolute, idempotent, exactly reversible. Main thread
+// only.
+static bool vgio_desktop_moved_x = false;
+static double vgio_desktop_home_x[3];
+static double vgio_desktop_home_lead = 0;
 
 // The resize subscription. AppKit re-lays the title-bar container on every
 // size change, which undoes a placement, and Gio's configuration notification
@@ -71,7 +88,8 @@ static NSWindow *vgio_desktop_window(void) {
 // does not change what the window reports as its content layout rect.
 static bool vgio_desktop_place_main(NSWindow *w, double strip) {
 	double center = atomic_load(&vgio_desktop_center);
-	if (center <= 0 && !vgio_desktop_placed) {
+	double lead = atomic_load(&vgio_desktop_lead);
+	if (center <= 0 && lead <= 0 && !vgio_desktop_placed && !vgio_desktop_moved_x) {
 		return false;
 	}
 	NSView *close = [w standardWindowButton:NSWindowCloseButton];
@@ -109,6 +127,28 @@ static bool vgio_desktop_place_main(NSWindow *w, double strip) {
 	b.size.height = height;
 	[bar setFrame:b];
 
+	// The first horizontal move records where AppKit itself had the buttons —
+	// they stand untouched on that axis until a move happens, so the record is
+	// the system's own geometry. No sideways growth is needed to keep them
+	// hit-testing: the title-bar views span the window's whole width, so a
+	// button stays inside its container's bounds wherever a sane leading edge
+	// puts it, where the vertical move really can push one below the edge.
+	if (lead > 0 && !vgio_desktop_moved_x) {
+		bool have = false;
+		for (size_t i = 0; i < sizeof(vgio_desktop_buttons) / sizeof(vgio_desktop_buttons[0]); i++) {
+			NSView *v = [w standardWindowButton:vgio_desktop_buttons[i]];
+			if (v == nil) {
+				continue;
+			}
+			vgio_desktop_home_x[i] = [v frame].origin.x;
+			double minx = NSMinX([v convertRect:[v bounds] toView:nil]);
+			if (!have || minx < vgio_desktop_home_lead) {
+				vgio_desktop_home_lead = minx;
+				have = true;
+			}
+		}
+	}
+
 	for (size_t i = 0; i < sizeof(vgio_desktop_buttons) / sizeof(vgio_desktop_buttons[0]); i++) {
 		NSView *v = [w standardWindowButton:vgio_desktop_buttons[i]];
 		if (v == nil) {
@@ -118,8 +158,22 @@ static bool vgio_desktop_place_main(NSWindow *w, double strip) {
 		// The superview's y grows upwards from its own bottom edge, and its
 		// top edge is pinned to the window's.
 		f.origin.y = height - top - NSHeight(f);
+		// Each button shifts by the same delta, so the group keeps AppKit's
+		// own spacing; the delta is a difference of window-frame x positions,
+		// which a translation-only view hierarchy keeps equal to a superview-
+		// space delta. With the request dropped, the recorded x is put back
+		// verbatim.
+		if (lead > 0) {
+			f.origin.x = vgio_desktop_home_x[i] + (lead - vgio_desktop_home_lead);
+		} else if (vgio_desktop_moved_x) {
+			f.origin.x = vgio_desktop_home_x[i];
+		}
 		[v setFrame:f];
 	}
+	vgio_desktop_moved_x = lead > 0;
+	// Only the vertical request takes the row: TopInset answers who owns the
+	// strip, and a horizontal move leaves the buttons on the system's own
+	// line inside a strip that is still the system's.
 	vgio_desktop_placed = center > 0;
 	return vgio_desktop_placed;
 }
@@ -142,6 +196,10 @@ static void vgio_desktop_reassert_main(void) {
 				vgio_desktop_reassert_main();
 			}];
 		vgio_desktop_observed = w;
+		// A different window means the recorded x positions belong to a
+		// window that is gone; the next horizontal move re-records them
+		// from the new window's own geometry.
+		vgio_desktop_moved_x = false;
 	}
 	[[w standardWindowButton:NSWindowCloseButton] setHidden:NO];
 	[[w standardWindowButton:NSWindowMiniaturizeButton] setHidden:NO];
@@ -210,7 +268,8 @@ void vgio_desktop_reassert(void) {
 	});
 }
 
-void vgio_desktop_place_buttons(double center) {
+void vgio_desktop_place_buttons(double leading, double center) {
+	atomic_store(&vgio_desktop_lead, leading);
 	atomic_store(&vgio_desktop_center, center);
 	// The request only becomes geometry under the re-assertion, which is the
 	// same path a reconfigure takes; asking for one now applies it at once

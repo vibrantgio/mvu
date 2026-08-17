@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"gioui.org/app"
+	"gioui.org/unit"
 
 	"github.com/vibrantgio/mvu"
 	"github.com/vibrantgio/mvu/desktop"
@@ -57,5 +58,32 @@ func TestPlaceWindowButtonsZeroIsAccepted(t *testing.T) {
 
 	if got := desktop.TopInset(); got != 0 {
 		t.Fatalf("TopInset() = %v with no placement and no native window, want 0", got)
+	}
+}
+
+// The two-axis placement is under the same contract as the vertical one: a
+// request with no window to place anything in is recorded and forgotten
+// about, zero per axis is legal in every combination, and no combination
+// invents an inset. What the request does to real window chrome needs a real
+// window, and is proven by an adopting application.
+func TestPlaceWindowButtonsAtInertWithoutNativeWindow(t *testing.T) {
+	w := mvu.NewWindow(append(desktop.FullSizeContent(), app.Title("desktop test"))...)
+	desktop.ShowWindowButtons(w)
+
+	for _, c := range []struct{ leading, center int }{
+		{25, 22}, // both axes stated
+		{25, 0},  // leading alone, the line left to the system
+		{0, 22},  // the vertical call's own placement, spelled here
+		{0, 0},   // the full restore
+	} {
+		desktop.PlaceWindowButtonsAt(unit.Dp(c.leading), unit.Dp(c.center))
+		if got := desktop.TopInset(); got != 0 {
+			t.Fatalf("TopInset() = %v after PlaceWindowButtonsAt(%d, %d) with no native window, want 0",
+				got, c.leading, c.center)
+		}
+		if got := desktop.LeadingInset(); got != 0 {
+			t.Fatalf("LeadingInset() = %v after PlaceWindowButtonsAt(%d, %d) with no native window, want 0",
+				got, c.leading, c.center)
+		}
 	}
 }

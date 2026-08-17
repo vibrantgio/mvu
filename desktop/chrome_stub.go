@@ -20,6 +20,8 @@ func showWindowButtons(*mvu.Window) {}
 
 func placeWindowButtons(unit.Dp) {}
 
+func placeWindowButtonsAt(_, _ unit.Dp) {}
+
 func topInset() unit.Dp { return 0 }
 
 func leadingInset() unit.Dp { return 0 }

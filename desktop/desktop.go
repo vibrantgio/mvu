@@ -59,6 +59,11 @@ func ShowWindowButtons(w *mvu.Window) {
 // edge, and [TopInset] reports 0 while a placement is in force, since the row
 // at the top of the window is then the application's to lay out from.
 //
+// The call states the whole placement: PlaceWindowButtons(center) is
+// [PlaceWindowButtonsAt](0, center), the same vertical line with the system's
+// own x. A caller that also states the leading edge uses PlaceWindowButtonsAt
+// directly.
+//
 // The placement is re-applied by the same re-assertion that re-shows the
 // buttons, because AppKit rebuilds the title bar's layout on a window resize
 // and on every configuration change, and each rebuild puts the buttons back.
@@ -71,6 +76,34 @@ func ShowWindowButtons(w *mvu.Window) {
 // window is remembered and applied to the first re-assertion that finds one.
 func PlaceWindowButtons(center unit.Dp) {
 	placeWindowButtons(center)
+}
+
+// PlaceWindowButtonsAt places the three standard macOS window buttons on both
+// axes: leading is where the group's leading edge sits, in dp in from the
+// leading edge of the window, and center is the horizontal line their centres
+// sit on, in dp below its top — [PlaceWindowButtons]'s own parameter, meaning
+// exactly what it means there. The buttons keep their own size and the
+// system's own spacing; the group moves as one.
+//
+// Zero means the system's own placement, per axis and independently:
+// PlaceWindowButtonsAt(0, 14) moves the line and leaves x alone — the same
+// placement PlaceWindowButtons(14) states — PlaceWindowButtonsAt(25, 0)
+// moves the leading edge and leaves the buttons on the system's own line,
+// and PlaceWindowButtonsAt(0, 0), like PlaceWindowButtons(0), restores the
+// system geometry exactly. Each call states the complete placement; the two
+// functions set the same state, and the last call wins.
+//
+// [LeadingInset] keeps reporting the buttons' trailing edge at wherever the
+// placement put them, because it is measured from their frames rather than
+// assumed. [TopInset] reports 0 only while a vertical placement — a non-zero
+// center — is in force: moving the leading edge alone claims no row, so the
+// native strip stays what an application must clear.
+//
+// Everything else is [PlaceWindowButtons]'s contract unchanged: applied under
+// the same re-assertion, callable before the window exists, an empty function
+// off macOS.
+func PlaceWindowButtonsAt(leading, center unit.Dp) {
+	placeWindowButtonsAt(leading, center)
 }
 
 // TopInset reports how far below the top of the window an application must
@@ -122,9 +155,11 @@ func TopInset() unit.Dp {
 // the space layout works in; under the full-size-content treatment, where the
 // content spans the frame, the two coincide.
 //
-// [PlaceWindowButtons] does not change it: a placement moves the line the
-// buttons sit on and nothing else, so their trailing edge stands where it
-// stood.
+// [PlaceWindowButtons] does not change it: a vertical placement moves the
+// line the buttons sit on and nothing else, so their trailing edge stands
+// where it stood. A [PlaceWindowButtonsAt] leading edge does move it, and
+// the measurement follows: the value is read from the buttons' frames where
+// the placement put them, not from where the system would have.
 //
 // The measurement is maintained by [ShowWindowButtons]'s re-assertion on the
 // same terms as [TopInset]'s: it reports 0 until the window's first frame,

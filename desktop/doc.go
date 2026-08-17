@@ -42,7 +42,10 @@
 // the buttons on a line the caller picks, which lets one row the application
 // draws itself carry the buttons and the application's own controls together;
 // with a placement in force [TopInset] reports 0, because the row at the top
-// of the window is then the caller's.
+// of the window is then the caller's. [PlaceWindowButtonsAt] states the
+// buttons' leading edge as well as their line, for a surface whose own edge
+// stands somewhere the system's x was never chosen for; zero on either axis
+// keeps the system's placement on that axis.
 //
 // Two things measured about that row, both easy to assume wrongly. The Gio
 // view spans the whole window frame and wins the hit test throughout the
