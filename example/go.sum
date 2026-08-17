@@ -31,6 +31,8 @@ github.com/vibrantgio/ivg/raster/gio v0.1.6 h1:ovAC6JC+2nDFKSy/wuhduZPMDdpbXFuy2
 github.com/vibrantgio/ivg/raster/gio v0.1.6/go.mod h1:swjaWU+DO0cDZfqpCsKLLGPbEn9VDn/CE6MZ/9L39/Q=
 github.com/vibrantgio/mvu v0.7.0 h1:l0Et6wpOD4I0jc4/EfMWVpkUxSiDaTAHO2hBhphFyRM=
 github.com/vibrantgio/mvu v0.7.0/go.mod h1:jFP2zPvLge60zDSlCqTOcbMLHJaQgv1b8/VsmFD1ejo=
+github.com/vibrantgio/mvu v0.8.0 h1:WqMma2v8Bo/s4PUMlltJCpccbxjXAnN3ixE4WokgcI8=
+github.com/vibrantgio/mvu v0.8.0/go.mod h1:jFP2zPvLge60zDSlCqTOcbMLHJaQgv1b8/VsmFD1ejo=
 github.com/vibrantgio/textdraw v0.0.4 h1:0YRS1dkongHKd3Lz5EpLKKd31f/bAEI/2nJTPNBNCWQ=
 github.com/vibrantgio/textdraw v0.0.4/go.mod h1:av2ygRSlI5LA0+gauPmq6JhzDuhdsuvCccMI/w38dI8=
 github.com/vibrantgio/theme v0.6.0 h1:h4HznU/HoKd29XjcTMR7xJWBr0ctDx2Mkve9mByQVyM=
