@@ -42,3 +42,7 @@ func showWindowButtons(w *mvu.Window) {
 func topInset() unit.Dp {
 	return unit.Dp(C.vgio_desktop_top_inset())
 }
+
+func leadingInset() unit.Dp {
+	return unit.Dp(C.vgio_desktop_leading_inset())
+}

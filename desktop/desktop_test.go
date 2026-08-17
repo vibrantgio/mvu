@@ -26,4 +26,7 @@ func TestSeamInertWithoutNativeWindow(t *testing.T) {
 	if got := desktop.TopInset(); got != 0 {
 		t.Fatalf("TopInset() = %v before any native window exists, want 0", got)
 	}
+	if got := desktop.LeadingInset(); got != 0 {
+		t.Fatalf("LeadingInset() = %v before any native window exists, want 0", got)
+	}
 }

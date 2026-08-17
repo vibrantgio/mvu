@@ -11,6 +11,10 @@
 // deadlock — so the query reads this cache and the re-assertion refreshes it.
 static _Atomic double vgio_desktop_inset = 0;
 
+// The horizontal companion to vgio_desktop_inset, cached and read on the same
+// terms and for the same reason.
+static _Atomic double vgio_desktop_leading = 0;
+
 // The application's window: its first titled window. The full-size-content
 // treatment keeps NSWindowStyleMaskTitled on macOS, so the treated window is
 // still found by this test.
@@ -33,8 +37,41 @@ static void vgio_desktop_reassert_main(void) {
 	[[w standardWindowButton:NSWindowMiniaturizeButton] setHidden:NO];
 	[[w standardWindowButton:NSWindowZoomButton] setHidden:NO];
 	double inset = NSHeight([w frame]) - NSHeight([w contentLayoutRect]);
+
+	// The buttons' frames are in their superview's coordinate space — the
+	// title-bar view, not the content view — so they cannot be compared with
+	// a content-relative measurement as they stand. convertRect:toView:nil
+	// puts each one into the window's own base coordinates, and subtracting
+	// the content layout rect's origin restates it in the space the content
+	// is laid out in. Under the full-size-content treatment that origin is
+	// zero and the subtraction changes nothing; it is written out anyway so
+	// the value stays correct if the window ever stops spanning its frame.
+	const NSWindowButton kButtons[] = {
+		NSWindowCloseButton,
+		NSWindowMiniaturizeButton,
+		NSWindowZoomButton,
+	};
+	double leading = 0;
+	for (size_t i = 0; i < sizeof(kButtons) / sizeof(kButtons[0]); i++) {
+		NSView *b = [w standardWindowButton:kButtons[i]];
+		if (b == nil) {
+			continue;
+		}
+		double edge = NSMaxX([b convertRect:[b bounds] toView:nil]);
+		if (edge > leading) {
+			leading = edge;
+		}
+	}
+	if (leading > 0) {
+		leading -= NSMinX([w contentLayoutRect]);
+	}
+	if (leading < 0) {
+		leading = 0;
+	}
+
+	double prevLeading = atomic_exchange(&vgio_desktop_leading, leading);
 	double prev = atomic_exchange(&vgio_desktop_inset, inset);
-	if (prev != inset) {
+	if (prev != inset || prevLeading != leading) {
 		// The frame that triggered this re-assertion laid out with the stale
 		// inset. Redraw the way Gio's own Invalidate does, so the next frame
 		// picks the fresh value up even in an otherwise idle application.
@@ -60,4 +97,8 @@ void vgio_desktop_reassert(void) {
 
 double vgio_desktop_top_inset(void) {
 	return atomic_load(&vgio_desktop_inset);
+}
+
+double vgio_desktop_leading_inset(void) {
+	return atomic_load(&vgio_desktop_leading);
 }

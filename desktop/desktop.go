@@ -31,7 +31,7 @@ func FullSizeContent() []app.Option {
 // other than macOS it does nothing.
 //
 // Each re-assertion dispatches itself onto the AppKit main thread and also
-// refreshes the measurement reported by [TopInset].
+// refreshes the measurements reported by [TopInset] and [LeadingInset].
 //
 // Options applied through the raw Gio handle — w.Window().Option(...) —
 // bypass the notification this relies on: Gio re-hides the buttons and
@@ -55,8 +55,32 @@ func ShowWindowButtons(w *mvu.Window) {
 //
 // The strip itself is paint-only for the application: clicks there go to the
 // native title-bar view — window dragging, double-click zoom — never to
-// widgets underneath, and the window buttons occupy roughly the leading
-// 80 dp of it.
+// widgets underneath, and the window buttons occupy the leading run of it
+// that [LeadingInset] measures.
 func TopInset() unit.Dp {
 	return topInset()
+}
+
+// LeadingInset reports how far in from the leading edge of the content a
+// full-size-content window's own controls reach: the trailing edge of the
+// rightmost standard window button — close, miniaturize and zoom together —
+// measured from the native window. AppKit points are Gio dp, so the value
+// pads layout directly. Like [TopInset] it is measured rather than assumed,
+// because the button metrics are the system's to change.
+//
+// The value is the bare trailing edge of the buttons and nothing more: it
+// includes no breathing room after them, so a caller placing content beside
+// the controls adds its own spacing on top. It is expressed relative to the
+// leading edge of the content area rather than of the window frame, which is
+// the space layout works in; under the full-size-content treatment, where the
+// content spans the frame, the two coincide.
+//
+// The measurement is maintained by [ShowWindowButtons]'s re-assertion on the
+// same terms as [TopInset]'s: it reports 0 until the window's first frame,
+// and when a fresh measurement changes it the window is redrawn so the next
+// frame lays out with the new value. Platforms whose windows carry no such
+// buttons — every platform other than macOS — always report 0, and content
+// there starts at the leading edge.
+func LeadingInset() unit.Dp {
+	return leadingInset()
 }

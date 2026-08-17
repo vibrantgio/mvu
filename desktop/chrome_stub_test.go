@@ -16,3 +16,12 @@ func TestFullSizeContentReturnsNothing(t *testing.T) {
 		t.Fatalf("FullSizeContent() returned %d options, want none", len(opts))
 	}
 }
+
+// These windows carry no buttons inside their content, so nothing is ever
+// displaced: the leading inset is zero unconditionally, not merely until some
+// measurement lands, and an application may lay out from the leading edge.
+func TestLeadingInsetIsZero(t *testing.T) {
+	if got := desktop.LeadingInset(); got != 0 {
+		t.Fatalf("LeadingInset() = %v on a platform without window buttons, want 0", got)
+	}
+}

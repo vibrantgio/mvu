@@ -8,6 +8,7 @@ import (
 	"gioui.org/app"
 	"gioui.org/unit"
 
+	"github.com/vibrantgio/mvu"
 	"github.com/vibrantgio/mvu/desktop"
 )
 
@@ -27,5 +28,32 @@ func TestFullSizeContentRequestsUndecorated(t *testing.T) {
 	}
 	if cnf.Decorated {
 		t.Fatal("FullSizeContent() left Config.Decorated true, want false")
+	}
+}
+
+// What the leading inset may report on this platform. A test binary has no
+// NSApplication, so the re-assertion returns before measuring anything and
+// the answer is the unmeasured 0 — the same headless case the cross-platform
+// test pins. Once a real window exists the answer is the trailing edge of the
+// three window buttons, which no macOS release has put anywhere near the
+// edges of this band; anything outside it is a coordinate-space error rather
+// than a system that moved the buttons, and this catches that without
+// nailing the test to one release's metrics.
+func TestLeadingInsetIsUnmeasuredOrPlausible(t *testing.T) {
+	w := mvu.NewWindow(append(desktop.FullSizeContent(), app.Title("desktop test"))...)
+	desktop.ShowWindowButtons(w)
+	w.Option(app.Title("desktop test retitled"))
+
+	const (
+		minPlausible = 40
+		maxPlausible = 160
+	)
+	got := desktop.LeadingInset()
+	if got == 0 {
+		return
+	}
+	if got < minPlausible || got > maxPlausible {
+		t.Fatalf("LeadingInset() = %v, want 0 (unmeasured) or within [%v, %v]",
+			got, unit.Dp(minPlausible), unit.Dp(maxPlausible))
 	}
 }
