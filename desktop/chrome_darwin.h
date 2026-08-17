@@ -10,9 +10,17 @@
 // no application or no titled window exists.
 extern void vgio_desktop_reassert(void);
 
+// vgio_desktop_place_buttons records the centre line, in AppKit points below
+// the top of the window frame, that the standard window buttons are to be
+// centred on, and asks for a re-assertion so the request takes effect at once.
+// A centre of 0 gives the buttons back to AppKit's own placement. Safe to call
+// from any thread.
+extern void vgio_desktop_place_buttons(double center);
+
 // vgio_desktop_top_inset returns the most recently measured top inset in
-// AppKit points (which equal Gio dp), 0 before any measurement. Safe to call
-// from any thread; it never dispatches.
+// AppKit points (which equal Gio dp), 0 before any measurement and 0 while a
+// placement from vgio_desktop_place_buttons is in force. Safe to call from any
+// thread; it never dispatches.
 extern double vgio_desktop_top_inset(void);
 
 // vgio_desktop_leading_inset returns the most recently measured trailing edge

@@ -30,8 +30,12 @@ func FullSizeContent() []app.Option {
 // Option call on w. Call it once, right after constructing w; on platforms
 // other than macOS it does nothing.
 //
-// Each re-assertion dispatches itself onto the AppKit main thread and also
-// refreshes the measurements reported by [TopInset] and [LeadingInset].
+// Each re-assertion dispatches itself onto the AppKit main thread, applies any
+// placement asked for by [PlaceWindowButtons], and refreshes the measurements
+// reported by [TopInset] and [LeadingInset]. The first re-assertion also
+// subscribes to the window's own resize notification, so every one of those
+// three survives a resize the user drives with the mouse — which changes no
+// window option and so raises no configuration notification of its own.
 //
 // Options applied through the raw Gio handle — w.Window().Option(...) —
 // bypass the notification this relies on: Gio re-hides the buttons and
@@ -41,22 +45,65 @@ func ShowWindowButtons(w *mvu.Window) {
 	showWindowButtons(w)
 }
 
-// TopInset reports the height of the native title-bar strip that a
-// full-size-content window's content extends behind: the window frame height
-// minus the content layout height, measured from the native window. AppKit
-// points are Gio dp, so the value pads layout directly. It is measured, never
-// a constant — the strip stands at 32 dp on current macOS where folklore says
-// 28, and a hardcoded value fails in the direction that clips content.
+// PlaceWindowButtons centres the three standard macOS window buttons on a
+// horizontal line center dp below the top edge of the window, so that a row
+// the application draws itself can hold them rather than sit below them. A
+// center of 0 — the default — leaves the buttons where macOS puts them, and
+// passing 0 after a placement gives them back. On platforms other than macOS
+// it does nothing at all.
+//
+// Pass the vertical centre of the row the buttons are to sit in: a 28 dp row
+// at the top of the window asks for 14. The buttons keep their own size and
+// their horizontal positions, which are the system's to choose; only the line
+// they sit on is the caller's. [LeadingInset] keeps reporting their trailing
+// edge, and [TopInset] reports 0 while a placement is in force, since the row
+// at the top of the window is then the application's to lay out from.
+//
+// The placement is re-applied by the same re-assertion that re-shows the
+// buttons, because AppKit rebuilds the title bar's layout on a window resize
+// and on every configuration change, and each rebuild puts the buttons back.
+// What that costs, per re-assertion: five view frames assigned on the AppKit
+// main thread, no allocation and no drawing, and a resize subscription
+// [ShowWindowButtons] would have taken out anyway. Off macOS the call compiles
+// to an empty function.
+//
+// Call it after [ShowWindowButtons]; a placement asked for before there is a
+// window is remembered and applied to the first re-assertion that finds one.
+func PlaceWindowButtons(center unit.Dp) {
+	placeWindowButtons(center)
+}
+
+// TopInset reports how far below the top of the window an application must
+// begin its own content: the height of the native title-bar strip that a
+// full-size-content window's content extends behind — the window frame height
+// minus the content layout height, measured from the native window — or 0
+// once [PlaceWindowButtons] has placed the window buttons, because a caller
+// that has taken the buttons into a row of its own has taken the row.
+//
+// AppKit points are Gio dp, so the value pads layout directly. It is measured,
+// never a constant — the strip stands at 32 dp on current macOS where folklore
+// says 28, and a hardcoded value fails in the direction that clips content.
+//
+// That zero is this package's answer, not AppKit's: a window's content layout
+// rect does not shrink when the buttons move, and the window goes on reporting
+// the same 32 dp strip it reported before. Nothing in AppKit will report a
+// collapsed strip, so this reports the question the caller is really asking —
+// how much is left above me that is not mine — and answers it from who owns
+// the row rather than from a number the system does not offer.
 //
 // The measurement is maintained by [ShowWindowButtons]'s re-assertion: until
 // the window's first frame TopInset reports 0, and on platforms other than
 // macOS it always reports 0. When a fresh measurement changes the value, the
 // window is redrawn so the next frame lays out with it.
 //
-// The strip itself is paint-only for the application: clicks there go to the
-// native title-bar view — window dragging, double-click zoom — never to
-// widgets underneath, and the window buttons occupy the leading run of it
-// that [LeadingInset] measures.
+// The strip is not as dead as a native title bar looks. Under the
+// full-size-content treatment the Gio view spans the whole window frame and
+// wins the hit test throughout the strip — everywhere except over the window
+// buttons themselves, which keep a few dp of slop around them — so widgets
+// drawn up there do receive their clicks. What the strip does not give back is
+// the native drag: the title-bar view never sees the press, so the window
+// cannot be moved by its top edge until the application claims a region for it
+// with Gio's own system.ActionMove.
 func TopInset() unit.Dp {
 	return topInset()
 }
@@ -74,6 +121,10 @@ func TopInset() unit.Dp {
 // leading edge of the content area rather than of the window frame, which is
 // the space layout works in; under the full-size-content treatment, where the
 // content spans the frame, the two coincide.
+//
+// [PlaceWindowButtons] does not change it: a placement moves the line the
+// buttons sit on and nothing else, so their trailing edge stands where it
+// stood.
 //
 // The measurement is maintained by [ShowWindowButtons]'s re-assertion on the
 // same terms as [TopInset]'s: it reports 0 until the window's first frame,

@@ -33,13 +33,25 @@
 // # The title-bar strip
 //
 // Gio reports no top inset on macOS, so content runs under the title-bar
-// strip. Query the strip's height with [TopInset] and pad interactive content
-// down by it — the value is measured from the native window, never assumed.
-// Clicks in the strip go to the native title-bar view, not to widgets drawn
-// underneath; that is exactly what makes native window dragging and
-// double-click zoom work, so the strip is paint-only for the application:
-// draw background there, put nothing interactive in it, and keep roughly the
-// leading 80 dp clear for the window buttons.
+// strip. Query the strip's height with [TopInset] and pad content down by it —
+// the value is measured from the native window, never assumed — and keep the
+// leading run of the row clear for the window buttons, which [LeadingInset]
+// measures rather than guesses.
+//
+// The strip does not have to stay the system's. [PlaceWindowButtons] centres
+// the buttons on a line the caller picks, which lets one row the application
+// draws itself carry the buttons and the application's own controls together;
+// with a placement in force [TopInset] reports 0, because the row at the top
+// of the window is then the caller's.
+//
+// Two things measured about that row, both easy to assume wrongly. The Gio
+// view spans the whole window frame and wins the hit test throughout the
+// strip, so widgets drawn there do receive clicks — everywhere except over the
+// buttons, which keep a few dp of slop around them. And precisely because the
+// native title-bar view never sees the press, the window can no longer be
+// dragged by its top edge: an application that wants that back claims a region
+// for it with Gio's system.ActionMove, the same way it would anywhere else in
+// an undecorated window.
 //
 // The chrome treatment addresses the application's one window — the native
 // window is found as the application's first titled window, which the

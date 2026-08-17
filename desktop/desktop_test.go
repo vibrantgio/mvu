@@ -30,3 +30,32 @@ func TestSeamInertWithoutNativeWindow(t *testing.T) {
 		t.Fatalf("LeadingInset() = %v before any native window exists, want 0", got)
 	}
 }
+
+// A placement asked for with no window to place anything in must be recorded
+// and forgotten about, not crash and not invent an inset: an application is
+// free to state where its row is before the first frame has drawn.
+func TestPlaceWindowButtonsInertWithoutNativeWindow(t *testing.T) {
+	w := mvu.NewWindow(append(desktop.FullSizeContent(), app.Title("desktop test"))...)
+	desktop.ShowWindowButtons(w)
+
+	desktop.PlaceWindowButtons(14)
+	defer desktop.PlaceWindowButtons(0)
+
+	if got := desktop.TopInset(); got != 0 {
+		t.Fatalf("TopInset() = %v after a placement with no native window, want 0", got)
+	}
+	if got := desktop.LeadingInset(); got != 0 {
+		t.Fatalf("LeadingInset() = %v after a placement with no native window, want 0", got)
+	}
+}
+
+// Dropping a placement is a supported state, not merely the absence of one:
+// zero hands the buttons back, and asking for zero when nothing was ever
+// placed is legal too.
+func TestPlaceWindowButtonsZeroIsAccepted(t *testing.T) {
+	desktop.PlaceWindowButtons(0)
+
+	if got := desktop.TopInset(); got != 0 {
+		t.Fatalf("TopInset() = %v with no placement and no native window, want 0", got)
+	}
+}
