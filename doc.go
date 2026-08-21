@@ -112,5 +112,5 @@
 // with this one, so example/v0.4.3 goes with v0.4.3 — holds runnable programs
 // from a bare window upwards. The organization's agent guide carries the full
 // application skeleton and the rules above:
-// https://raw.githubusercontent.com/vibrantgio/.github/master/llms.txt
+// https://raw.githubusercontent.com/vibrantgio/workbench/master/llms.txt
 package mvu
