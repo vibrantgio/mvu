@@ -3,8 +3,8 @@ module github.com/vibrantgio/mvu/example
 go 1.25.1
 
 require (
-	gioui.org v0.10.1
-	gioui.org/x v0.10.1
+	gioui.org v0.10.2
+	gioui.org/x v0.10.2
 	github.com/fogleman/ease v0.0.0-20170301025033-8da417bf1776
 	github.com/reactivego/rx v0.3.0
 	github.com/vibrantgio/backdrop v0.0.3
@@ -18,7 +18,7 @@ require (
 )
 
 require (
-	gioui.org/shader v1.0.8 // indirect
+	gioui.org/shader v1.0.9 // indirect
 	github.com/go-text/typesetting v0.3.4 // indirect
 	github.com/reactivego/scheduler v0.2.0 // indirect
 	github.com/vibrantgio/font v0.2.0 // indirect

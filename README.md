@@ -34,7 +34,7 @@ This keeps state changes explicit while preserving the flexibility of Gio widget
 - `stream.Value`, the one observable primitive for state several consumers watch.
 - Reactive window renderer that composes one or more observable widget layers.
 - Direct access to the underlying `*app.Window` when needed.
-- Compatible with Gio `v0.10.1`.
+- Compatible with Gio `v0.10.2`.
 
 ## Installation
 
@@ -358,7 +358,7 @@ go run .
 ## Requirements
 
 - Go `1.25.1` or newer for the root module.
-- Gio `v0.10.1`.
+- Gio `v0.10.2`.
 - `github.com/reactivego/rx` `v0.3.0`.
 
 ## License
