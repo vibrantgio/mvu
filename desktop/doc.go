@@ -72,6 +72,11 @@
 // system.ActionMove an undecorated window would use anywhere else, said once
 // for the three shapes the top of a window comes in.
 //
+// The last of those three shapes is the plain one, and it is always the same
+// two calls over the same height: the strip claimed, the page held down past
+// it. [CapTop] is that pair, so a window with no row of its own at the top
+// states its strip once and gets both halves of it.
+//
 // The chrome treatment addresses the application's one window — the native
 // window is found as the application's first titled window, which the
 // treatment's borderless option still is on macOS. Applications with several
