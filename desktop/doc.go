@@ -47,6 +47,19 @@
 // stands somewhere the system's x was never chosen for; zero on either axis
 // keeps the system's placement on that axis.
 //
+// The arithmetic around such a row is the same wherever it is drawn, so it
+// lives here rather than in each window that draws one. [ButtonRunIn] derives
+// where the buttons go from the height of the band they are to sit in, by the
+// platform's own rule — centred in whatever band the window has, leading inset
+// equal to top inset — and [ButtonRunAt] derives the same run from an inset
+// already decided. [BandLead] answers where a band's own content may start,
+// past the buttons where the platform draws them in the content area and at
+// the band's own gutter where it does not. [InsetTop] is the other side of
+// that coin: it pads a layer down past a strip the application has not
+// claimed, reading the height afresh each frame. All four are geometry in dp
+// and nothing else — a band's ground and its type belong to the packages that
+// know about colour, which are above this one.
+//
 // Two things measured about that row, both easy to assume wrongly. The Gio
 // view spans the whole window frame and wins the hit test throughout the
 // strip, so widgets drawn there do receive clicks — everywhere except over the
