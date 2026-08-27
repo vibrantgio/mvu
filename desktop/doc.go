@@ -65,9 +65,12 @@
 // strip, so widgets drawn there do receive clicks — everywhere except over the
 // buttons, which keep a few dp of slop around them. And precisely because the
 // native title-bar view never sees the press, the window can no longer be
-// dragged by its top edge: an application that wants that back claims a region
-// for it with Gio's system.ActionMove, the same way it would anywhere else in
-// an undecorated window.
+// dragged by its top edge: the drag leaves with the strip, and the region that
+// caps the window hands a run of itself back to get it. [DragBand] is that
+// claim over a rectangle, [DragRun] over a run of a row being laid out, and
+// [DragTop] over the strip a page starts below — the same
+// system.ActionMove an undecorated window would use anywhere else, said once
+// for the three shapes the top of a window comes in.
 //
 // The chrome treatment addresses the application's one window — the native
 // window is found as the application's first titled window, which the
