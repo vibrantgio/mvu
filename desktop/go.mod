@@ -5,7 +5,7 @@ go 1.25.1
 require (
 	gioui.org v0.10.2
 	github.com/reactivego/rx v0.3.0
-	github.com/vibrantgio/mvu v1.0.0
+	github.com/vibrantgio/mvu v1.0.1
 )
 
 require (
