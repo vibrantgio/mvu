@@ -162,16 +162,18 @@ func (d *DropTarget) close() {
 	})
 }
 
-// debugEnabled reports whether VGIO_DROP_DEBUG asks for drop-path logging.
-// Read lazily so an application can set the variable early in main, before
+// debugEnabled reports whether the environment asks for native-path logging.
+// VGIO_DESKTOP_DEBUG covers the whole package; VGIO_DROP_DEBUG is the older
+// name, kept because it is what the drop path documented and scripts pass.
+// Read lazily so an application can set either variable early in main, before
 // any window exists.
 var debugEnabled = sync.OnceValue(func() bool {
-	return os.Getenv("VGIO_DROP_DEBUG") != ""
+	return os.Getenv("VGIO_DESKTOP_DEBUG") != "" || os.Getenv("VGIO_DROP_DEBUG") != ""
 })
 
-// debugf logs the drop path's lifecycle — registration, teardown, and
-// deliberate silences — when VGIO_DROP_DEBUG is set. Off by default: a
-// library logs nothing unasked.
+// debugf logs the native paths' lifecycle — registration, teardown, menu
+// amendment, and deliberate silences — when either debug variable is set. Off
+// by default: a library logs nothing unasked.
 func debugf(format string, args ...any) {
 	if debugEnabled() {
 		log.Printf(format, args...)

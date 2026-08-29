@@ -1,9 +1,10 @@
 // Package desktop adjusts the native desktop window that Gio creates for a
 // [github.com/vibrantgio/mvu.Window] — in place, without forking Gio. It has
-// two tenants behind the same seam: the macOS full-size-content window
+// three tenants behind the same seam: the macOS full-size-content window
 // chrome (content extending behind a transparent title bar, the three
-// standard window buttons floating over it), and OS file drops, delivered
-// into the application's message loop as ordinary messages.
+// standard window buttons floating over it), OS file drops, and the
+// application's menu bar — the last two delivered into the application's
+// message loop as ordinary messages.
 //
 // The package is safe to call from platform-neutral code: every entry point
 // compiles everywhere and quietly does nothing away from macOS.
@@ -104,7 +105,39 @@
 // the window's ViewEvents stream — which mvu documents as single-subscriber —
 // so constructing a target claims that stream for the window.
 //
-// # How the two tenants share the seam
+// # The application menu
+//
+// Gio builds a fixed menu bar — one application menu holding Hide and Quit —
+// in its own darwin glue, before the run loop starts, and offers no way to
+// add to it. NSApp's main menu is an ordinary mutable menu all the same, so
+// [NewMenuBar] amends it in place: [MenuItem] values declare a menu, a label,
+// a one-character chord with the command modifier implied, and the message
+// choosing the item posts.
+//
+//	menu := desktop.NewMenuBar(w,
+//		desktop.MenuItem{Menu: "File", Title: "New Note", Key: "n", Msg: NewNote{}},
+//		desktop.MenuItem{Title: "Settings…", Key: ",", Msg: OpenSettings{}},
+//	)
+//	models, runner := mvu.Loop(rx.Merge(w.Messages(), menu.Messages()), Init, Update)
+//
+// [ApplicationMenu] — the empty menu title, as the Settings item above — puts
+// an item at the top of the application's own menu, above Hide and Quit and
+// under a rule of its own; every other title names a menu of that name beside
+// it, created on the item that first names it and filled in declaration
+// order.
+//
+// The bar is the application's, not the window's: macOS draws one bar per
+// process whatever it has open, so a MenuBar is a process-wide declaration
+// that takes a window only to learn when there is an application to amend.
+// Declaring a second bar supersedes the first.
+//
+// An item's chord and an in-window accelerator on the same chord do not both
+// fire — the menu bar answers a key equivalent before the key reaches the
+// window — so declaring both is right rather than redundant: away from macOS
+// the declaration is inert and the in-window chord is what carries the
+// action.
+//
+// # How the tenants share the seam
 //
 // The chrome and the drop target repair different kinds of native state, and
 // they deliberately listen on different notifications. The window buttons are
@@ -120,6 +153,15 @@
 // configuration, view-instance state re-registers on attachment. The
 // raw-handle warning above is the chrome's alone — drop registration does
 // not depend on how options are applied.
+//
+// The menu is neither: it is application-level state that nothing un-does, so
+// it would need no notification at all were it not for timing. It listens on
+// the chrome's, for one reason — at the moment an application declares its
+// menu there is often no NSApplication yet, the application goroutine having
+// run ahead of app.Main, and the configuration notification is the first
+// moment this package is told there certainly is one. Every amendment is the
+// same idempotent rebuild, so listening on a notification that fires more
+// often than it must costs nothing.
 //
 // # Threading and lifecycle, for anyone touching the native half
 //
@@ -159,11 +201,19 @@
 // script run on a Mac; treat any change to the native half as unverified
 // until that script has been run again.
 //
+// The menu bar is the same shape of claim. A test binary has no
+// NSApplication and therefore no menu bar, so the tests cover the
+// declaration, the tag routing and the message stream, and prove the darwin
+// path compiles, links and stays silent without an application behind it.
+// That the items appear in the bar and fire is verified by running the
+// application.
+//
 // # cgo
 //
 // The macOS side is Objective-C reached through cgo — the first cgo in the
 // Vibrant Gio organization beyond what Gio itself carries. That is why this
 // is a nested module rather than part of the mvu root: the root stays
 // cgo-free and platform-neutral, and only applications that want native
-// window chrome or file drops take on this module's AppKit build path.
+// window chrome, file drops or a menu bar take on this module's AppKit build
+// path.
 package desktop
