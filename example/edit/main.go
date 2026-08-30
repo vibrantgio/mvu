@@ -41,8 +41,7 @@ func Edit() {
 
 func Input(ax, ay float32, initial string, textColor, selectColor, backColor color.Color) rx.Observable[layout.Widget] {
 	// The theme's Typography supplies both the shaper (Roboto, system fonts
-	// excluded) and the editor's type role; BodyLarge matches the 16 sp body
-	// text this example always used.
+	// excluded) and the editor's type role; BodyLarge is the 16 sp body role.
 	typ := tokens.DefaultTypography
 	shaper := typ.Shaper()
 	editFont := font.Font{Typeface: font.Typeface(typ.BodyLarge.Typeface)}

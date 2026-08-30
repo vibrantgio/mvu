@@ -50,8 +50,6 @@ func Tweening() {
 
 func TweenColors(colors rx.Observable[[]color.RGBA], fps int64, duration time.Duration, ease ease.Function) rx.Observable[color.RGBA] {
 	return rx.SwitchMap(colors, func(pair []color.RGBA) rx.Observable[color.RGBA] {
-		// fmt.Printf("tweening %#v\n", pair)
-
 		rgbaf := func(r, g, b, a uint32) (R, G, B, A float64) {
 			R = float64(r) / float64(a)
 			G = float64(g) / float64(a)
