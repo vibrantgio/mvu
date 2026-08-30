@@ -11,12 +11,11 @@ import (
 	"github.com/reactivego/rx"
 )
 
-// The tests below exercise the Option/OnConfigure seam directly, the way
-// message_test.go exercises the collector seam: Window.Render's FrameEvent arm
-// calls notifyFirstFrame, so testing that method tests the first-frame hook
-// without driving a real OS window. app.Window.Option is safe headless — with
-// no driver it only records the options — so a real NewWindow backs every
-// test.
+// The tests below exercise the Option/OnConfigure seam directly: Render's
+// FrameEvent arm calls notifyFirstFrame, so testing that method tests the
+// first-frame hook without driving a real OS window. app.Window.Option is safe
+// headless — with no driver it only records the options — so a real NewWindow
+// backs every test.
 
 // TestOptionNotifiesRegistrantsInOrder asserts that Window.Option forwards and
 // then runs every registered func, in registration order, once per call — and
@@ -92,9 +91,8 @@ func TestLateRegistrationFiresImmediately(t *testing.T) {
 	}
 }
 
-// TestRawHandleBypassesNotification pins the documented meaning of Window():
-// the raw handle stays reachable, but options applied through it do not
-// notify — the exact bypass the doc comment warns about.
+// TestRawHandleBypassesNotification pins the meaning of Window(): the raw
+// handle stays reachable, but options applied through it do not notify.
 func TestRawHandleBypassesNotification(t *testing.T) {
 	w := NewWindow(app.Title("seam"))
 
@@ -139,9 +137,8 @@ func TestRegistrantMayRegisterDuringNotification(t *testing.T) {
 	}
 }
 
-// The tests below exercise the ViewEvents seam the way the tests above
-// exercise OnConfigure: Window.Render's `case app.ViewEvent:` arm calls
-// forwardViewEvent, so driving that method drives the delivery contract
+// The tests below exercise the ViewEvents seam: Render's app.ViewEvent arm
+// calls forwardViewEvent, so driving that method drives the delivery contract
 // without a real OS window. The events fed in come from makeViewEvent in the
 // per-platform viewevent_*_test.go files — app.ViewEvent's unexported method
 // admits only gioui.org/app's own types, and each platform's build compiles

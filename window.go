@@ -192,15 +192,13 @@ func (w *Window) forwardViewEvent(e app.ViewEvent) {
 }
 
 // Render drives the Gio event loop. The returned subscription terminates
-// when the window emits an `app.DestroyEvent`.
+// when the window emits an app.DestroyEvent.
 //
-// Gio has enforced a synchronous protocol since v0.9: after delivering a `FrameEvent`,
-// the OS-side `deliverEvent` enters a select that can either receive the
-// rendered frame on `e.frames` or send `theFlushEvent` on `e.events`. Whoever
-// completes first wins, and if the flush is delivered before `Frame()` is
-// called, `deliverEvent` returns and the next `Frame()` deadlocks. The fix is
-// to read events and call `Frame()` on the *same* goroutine. Layer state is
-// updated concurrently via an atomic snapshot.
+// Gio's frame protocol is synchronous: after delivering a FrameEvent, the
+// OS side selects between receiving the rendered frame and sending its flush
+// event, and if the flush is delivered before Frame is called the next Frame
+// deadlocks. Events must therefore be read and Frame called on the same
+// goroutine. Layer state reaches that goroutine as an atomic snapshot.
 func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription {
 	blank := func(gtx layout.Context) layout.Dimensions {
 		return layout.Dimensions{Size: gtx.Constraints.Max}
@@ -267,9 +265,9 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 				}
 			case app.ViewEvent:
 				// app.ViewEvent is an interface, so this arm matches every
-				// platform's concrete type (app.AppKitViewEvent, ...). It is
-				// the one event class forwarded beyond the two above; all
-				// other events stay dropped, deliberately — see ViewEvents.
+				// platform's concrete type. It is the one event class
+				// forwarded beyond the two above; all other events are
+				// dropped.
 				w.forwardViewEvent(e)
 			}
 			again()

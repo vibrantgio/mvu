@@ -63,9 +63,7 @@ func TestASubscriberSeesTheSeed(t *testing.T) {
 
 // TestALateSubscriberSeesTheCurrentValue is the other half: a write with
 // nobody listening is not lost, it becomes the value the next subscriber
-// starts from. This is what theme/preferences needs — a settings screen
-// saves, a window opens later, and the window must not start from the value
-// the file held at launch.
+// starts from.
 func TestALateSubscriberSeesTheCurrentValue(t *testing.T) {
 	send, obs := stream.Value("seed")
 
@@ -96,16 +94,15 @@ func TestTheWriteIsSynchronous(t *testing.T) {
 	}
 }
 
-// TestUnsubscribeReleasesEverything is the G0B.1 regression, carried over from
-// prism/coordination. Over a bare rx.Subject this loop dies on iteration 32
-// with rx's "out of subject subscriptions", reported in a test binary against
-// whichever unlucky test subscribed next; prism/coordination survived it by
-// keeping its own registry, and this survives it because rx.Behavior's
-// subscriber set is a map with nothing to leak.
+// TestUnsubscribeReleasesEverything pins that a subscribe/unsubscribe cycle
+// leaks no subscription slot: rx.Behavior's subscriber set is a map, so the
+// entry goes away. Over a bare rx.Subject the same loop dies on iteration 32
+// with rx's "out of subject subscriptions", reported against whichever test
+// subscribed next.
 //
 // The loop deliberately runs far past any plausible ceiling with only ever one
 // live subscription, because that is the shape of a long-running application:
-// shells open and close, and at no instant are many subscribed at once.
+// windows open and close, and at no instant are many subscribed at once.
 func TestUnsubscribeReleasesEverything(t *testing.T) {
 	send, obs := stream.Value(-1)
 
@@ -130,12 +127,10 @@ func TestUnsubscribeReleasesEverything(t *testing.T) {
 	}
 }
 
-// TestTheProducerRunsFreeBehindAWedgedConsumer is the harsher half of the same
-// defect, and the one prism/coordination did NOT fix. A bare rx.Subject pins
-// its ring window to the slowest cursor, so a consumer that stops draining
-// blocks the producer forever — and the wrapper kept that, because it
-// delivered through a private rx.Subject per subscription. rx.Behavior's write
-// conflates instead of blocking.
+// TestTheProducerRunsFreeBehindAWedgedConsumer pins that a consumer which
+// stops draining cannot block the producer. A bare rx.Subject pins its ring
+// window to the slowest cursor and blocks the producer forever; rx.Behavior's
+// write conflates instead.
 func TestTheProducerRunsFreeBehindAWedgedConsumer(t *testing.T) {
 	send, obs := stream.Value(-1)
 
@@ -165,9 +160,8 @@ func TestTheProducerRunsFreeBehindAWedgedConsumer(t *testing.T) {
 	}
 }
 
-// TestThereIsNoSubscriberCeiling. prism/coordination allowed 64 concurrent
-// subscriptions and reported ErrSubscriberLimit past that, a leak detector for
-// a leak this design cannot have. There is no slot, so there is no limit.
+// TestThereIsNoSubscriberCeiling: subscriptions occupy no fixed slot, so no
+// number of concurrent consumers is refused.
 func TestThereIsNoSubscriberCeiling(t *testing.T) {
 	const n = 200
 	send, obs := stream.Value(0)
@@ -309,11 +303,10 @@ func TestUnsubscribeDeliversNoCompletion(t *testing.T) {
 	}
 }
 
-// TestAnIdleStreamCostsNoGoroutine is the reason the source hands its observer
-// back rather than being an rx.Subject the Connectable forwards from: a stream
-// that nobody is watching runs nothing at all. A per-path registry that never
-// shrinks — theme/preferences has one — would otherwise accumulate a
-// forwarding goroutine per path for the life of the process.
+// TestAnIdleStreamCostsNoGoroutine pins the reason the source hands its
+// observer back rather than being an rx.Subject the Connectable forwards from:
+// a stream nobody is watching runs nothing at all, so a registry holding many
+// idle streams costs no goroutines.
 func TestAnIdleStreamCostsNoGoroutine(t *testing.T) {
 	runtime.GC()
 	time.Sleep(100 * time.Millisecond)

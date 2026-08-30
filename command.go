@@ -8,7 +8,7 @@ import (
 
 const should_trace = true
 
-// Command
+// Command is a side effect as an observable of the messages it emits.
 type Command struct{ rx.Observable[Message] }
 
 func (cmd Command) Trace(name string) Command {

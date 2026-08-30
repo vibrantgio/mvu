@@ -168,15 +168,13 @@ func TestLoopSurvivesCommandError(t *testing.T) {
 }
 
 // TestLoopSubscribesMessagesExactlyOnce counts the cold subscriptions Loop
-// makes to its messages input, pinning the AutoConnect arithmetic doc.go calls
-// load-bearing: the internal Publish().AutoConnect(2) — models and commands —
-// must connect exactly once, subscribing the merged message sources exactly
-// once. Both drifts are silent (doc.go): too high never connects, so the
-// count stays 0 and the await below times out with no message reduced; too
-// low connects early or double-subscribes, and the count leaves 1. This is
-// the test that counts instead of hand-tuning — anyone adding a subscriber
-// path inside Loop (the way ViewEvents added one beside it on Window) must
-// keep this passing, not adjust the constant to match.
+// makes to its messages input: the internal Publish().AutoConnect(2) — models
+// and commands — must connect exactly once, subscribing the merged message
+// sources exactly once. Both drifts are silent: too high never connects, so
+// the count stays 0 and the await below times out with no message reduced; too
+// low connects early or double-subscribes, and the count leaves 1. A new
+// subscriber path inside Loop must keep this test passing rather than adjust
+// the expected count.
 func TestLoopSubscribesMessagesExactlyOnce(t *testing.T) {
 	in := make(chan Message, 8)
 	var subscriptions atomic.Int32

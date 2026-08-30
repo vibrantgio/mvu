@@ -63,10 +63,9 @@ func Loop[Model any](
 // through view onto a layer stacked in front of layers, and Run blocks until
 // the window is destroyed.
 //
-// Run renders on the raw mvu Window; view receives only the Model. An app
-// that needs theme-aware layers (e.g. a theme window, whose Render takes
-// a layer builder fed by the theme observable) composes Loop with its own
-// rendering instead — see Loop.
+// Run renders on the raw mvu Window and view receives only the Model. An
+// application whose layers need more than the Model composes [Loop] with its
+// own rendering instead.
 func Run[Model any](
 	w *Window,
 	init func() (Model, Command),

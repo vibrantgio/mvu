@@ -10,9 +10,9 @@ import (
 // that Window.Render's FrameEvent path depends on: while a collector is
 // registered for a given *op.Ops, every MessageOp.Add(ops) made during layout
 // must append to that frame's slice, so the messages can be forwarded to
-// Messages() after Frame() returns. This is the mechanism that lets an
-// interactive callback emit mvu.MessageOp{...}.Add(gtx.Ops) and have the model
-// update on the same frame (the GX.8 / GX.9 contract).
+// Messages() after Frame() returns — the mechanism that lets an interactive
+// callback emit mvu.MessageOp{...}.Add(gtx.Ops) and have the model update on
+// the same frame.
 func TestCollectorRoundTripsMessageOpsWithinFrame(t *testing.T) {
 	ops := new(op.Ops)
 	var frame []MessageOp
