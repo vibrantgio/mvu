@@ -26,13 +26,12 @@ import (
 var addDropMethodsOnce sync.Once
 
 // viewTargets maps each registered native view pointer to the DropTarget
-// serving its window. It is a package-level mutable, and deliberately so —
-// the justification, since that shape is otherwise this organization's
-// red flag: the drag callbacks re-enter Go from Objective-C carrying nothing
-// but the view's `self` pointer, so there is no instance, closure or
-// argument that could carry the owning target across, and a pointer-keyed
-// registry behind a mutex is the only bridge. It is not an event bus and
-// nothing subscribes to it: entries are owned by the window lifecycle —
+// serving its window. It must be package-level state: the drag callbacks
+// re-enter Go from Objective-C carrying nothing but the view's `self`
+// pointer, so no instance, closure or argument can carry the owning target
+// across, and a pointer-keyed registry behind a mutex is the only bridge. It
+// is not an event bus and nothing subscribes to it: entries are owned by the
+// window lifecycle —
 // stored when a valid view event attaches a view, deleted when the invalid
 // event detaches it — so the map holds exactly the live views and leaks
 // nothing. dispatchRaw holds viewMu across lookup AND delivery so that

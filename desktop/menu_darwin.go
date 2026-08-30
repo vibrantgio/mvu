@@ -26,11 +26,9 @@ import "unsafe"
 // this package is told there certainly is one.
 //
 // Nothing here calls AppKit: vgio_menu_apply dispatches to the main thread
-// itself and returns immediately. That is deliberate rather than incidental.
-// The notification fires during Gio's first-frame handoff with the main
-// thread parked inside it, so a synchronous hop from here would deadlock
-// there — the same hazard the window buttons' re-assertion documents, and the
-// same answer.
+// itself and returns immediately. The notification fires during Gio's
+// first-frame handoff with the main thread parked inside it, so a synchronous
+// hop from here would deadlock.
 func (m *MenuBar) install() {
 	C.vgio_menu_reset()
 	for i, it := range m.items {
@@ -58,8 +56,8 @@ func (m *MenuBar) declare(it MenuItem, tag int) {
 
 // vgioMenuChosen is called from the menu target's action method on the AppKit
 // main thread when a person chooses one of the declared items. It carries the
-// item's tag and nothing else — which is the whole reason the bar's routing
-// is a package-level registry (see menuActions).
+// item's tag and nothing else, which is why the bar's routing is a
+// package-level registry (see menuActions).
 //
 //export vgioMenuChosen
 func vgioMenuChosen(tag C.int) {

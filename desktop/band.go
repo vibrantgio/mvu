@@ -2,16 +2,13 @@ package desktop
 
 // The title band is the strip at the top of a full-size-content window that
 // the application draws itself, standing where the native title bar would
-// otherwise be. Three pieces of arithmetic follow from that arrangement, and
-// they are the same arithmetic in every window that takes it: where the
-// band's own content may start given that the platform's control buttons
+// otherwise be. The arithmetic here answers three questions about it: where
+// the band's own content may start given that the platform's control buttons
 // stand in its leading run, where those buttons go given the band's height,
-// and how far down a layer must start where the band at the top of the
-// window is still the platform's rather than the application's.
+// and how far down a layer must start where the band is still the platform's.
 //
-// Geometry only. What a band is painted with — its ground, its rules, its
-// type — is the application's business and belongs to the packages that know
-// about colour; this one sits below them and answers only in dp.
+// Geometry only, answered in dp. What a band is painted with belongs to
+// packages above this one.
 
 import (
 	"image"
@@ -60,16 +57,15 @@ type ButtonRun struct {
 
 	// Diameter is the drawn diameter of one circle — [WindowButtonDiameter],
 	// carried along so that a caller sizing a strip around the run has the
-	// whole geometry in one value rather than one field and one constant.
+	// whole geometry in one value.
 	Diameter unit.Dp
 
 	// Trailing is the trailing edge of the third circle, in from the
 	// window's leading edge: the run's whole width, and the number
 	// [LeadingInset] reports once there is a window with these buttons on it
-	// to measure. It is stated here because the derivation knows it, not as
-	// a substitute for the measurement — a window that has not drawn its
-	// first frame reports 0 there, and so does every platform whose windows
-	// carry no such buttons, where this field describes nothing that exists.
+	// to measure. It is not a substitute for that measurement: a window that
+	// has not drawn its first frame reports 0 there, and so does every
+	// platform whose windows carry no such buttons.
 	Trailing unit.Dp
 }
 
@@ -81,8 +77,7 @@ type ButtonRun struct {
 // puts them 9 dp in from both edges; a 52 dp unified toolbar band puts them
 // 19 dp in, which is where the platform's toolbar windows were measured:
 // 19 leading, 19 top, 14 across, 23 between centres, 79 to the far edge of
-// the third circle. There is no third constant to learn — measure the band,
-// centre the group, use the same number leading.
+// the third circle.
 //
 // The result is exact rather than rounded, so a band of odd height centres
 // the run on a half-dp line. That is what centring it means, and the
@@ -92,10 +87,9 @@ func ButtonRunIn(band unit.Dp) ButtonRun {
 }
 
 // ButtonRunAt derives the button run from a leading inset already decided:
-// [ButtonRunIn]'s rule read from the other end, for a window that knows where
-// the buttons belong but has no band height to halve. Since the leading inset
-// equals the top inset, the inset alone fixes the centre line, and the rest
-// of the run follows from the platform's own diameter and pitch.
+// since the leading inset equals the top inset, the inset alone fixes the
+// centre line, and the rest of the run follows from the platform's own
+// diameter and pitch.
 //
 // ButtonRunAt(19) and ButtonRunIn(52) are the same run.
 func ButtonRunAt(inset unit.Dp) ButtonRun {
@@ -135,7 +129,7 @@ func BandLead(gap, gutter unit.Dp) unit.Dp {
 // where the window has none. It is the form for a caller whose measurement
 // arrives from somewhere else — a test stating an edge it has no window to
 // take, a band that has already read [LeadingInset] this frame — and it is
-// where the arithmetic actually lives.
+// where the arithmetic lives.
 func BandLeadFrom(buttonsEnd, gap, gutter unit.Dp) unit.Dp {
 	if buttonsEnd > 0 {
 		return buttonsEnd + gap

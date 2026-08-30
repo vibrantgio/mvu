@@ -210,10 +210,8 @@
 //
 // # cgo
 //
-// The macOS side is Objective-C reached through cgo — the first cgo in the
-// Vibrant Gio organization beyond what Gio itself carries. That is why this
-// is a nested module rather than part of the mvu root: the root stays
-// cgo-free and platform-neutral, and only applications that want native
-// window chrome, file drops or a menu bar take on this module's AppKit build
-// path.
+// The macOS side is Objective-C reached through cgo. That is why this is a
+// nested module rather than part of the mvu root: the root stays cgo-free and
+// platform-neutral, and only applications that want native window chrome, file
+// drops or a menu bar take on this module's AppKit build path.
 package desktop

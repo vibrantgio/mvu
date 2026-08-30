@@ -4,13 +4,11 @@ package desktop
 // full-size-content treatment takes that strip, and the drag leaves with it:
 // the press that would have reached the title bar reaches the application
 // instead, and a window that claims nothing back cannot be moved by its top
-// edge at all. So whatever region caps the window hands a run of itself back,
-// and the three calls here are how it says so — the rectangle, the run of a
-// row being laid out, and the strip a page simply starts below.
+// edge at all. The three calls here hand a run back — the rectangle, the run
+// of a row being laid out, and the strip a page starts below.
 //
-// Input only, like the geometry beside it. What the band is painted with is
-// the business of the packages that know about colour; this one records an
-// area and an action and nothing else.
+// Input only: an area and an action, nothing about what the band is painted
+// with.
 
 import (
 	"image"

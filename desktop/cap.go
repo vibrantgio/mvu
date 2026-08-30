@@ -1,20 +1,13 @@
 package desktop
 
-// The plainest thing a full-size-content window does with the strip at its
-// top: nothing. No row of its own stands up there, the page simply begins
-// below the strip, and whatever the window is painted with shows through it.
+// A full-size-content window that draws no row of its own at the top still
+// needs two calls over the same height: the strip handed back as a drag band,
+// and the page held down past it. This file states that pair once — the only
+// place in the package spanning both the geometry and the input claim, since
+// the composition is the claim over exactly the strip the inset holds open.
 //
-// That arrangement is still two calls rather than none — the strip has to be
-// handed back as a drag band, and the page has to be held down past it — and
-// they are the same two calls with the same height every time. This file is
-// where the pair is said once. It is the one place in the package that spans
-// both sides of the seam, the geometry beside it and the input claim: the
-// composition is exactly the claim over the strip the inset holds open, and
-// it cannot be stated from either side alone.
-//
-// Still nothing about colour. A strip this helper caps carries no fill of its
-// own; a window that wants one paints it around the call, in the package that
-// knows what its region's ground is.
+// A strip capped here carries no fill of its own; a window that wants one
+// paints it around the call.
 
 import (
 	"gioui.org/layout"

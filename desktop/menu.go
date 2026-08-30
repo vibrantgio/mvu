@@ -93,15 +93,13 @@ type menuAction struct {
 	msg mvu.Message
 }
 
-// menuActions maps each declared item's tag to what choosing it does. It is a
-// package-level mutable, and deliberately so — the same justification the
-// drop path's view registry carries: the menu callback re-enters Go from
-// Objective-C carrying nothing but the chosen item's integer tag, so there is
-// no instance, closure or argument that could carry the owning bar across,
-// and a tag-keyed registry behind a mutex is the only bridge. Tags are handed
-// out here and never reused, so a stale callback for a superseded bar's item
-// resolves to that bar and posts into a stream nobody reads, rather than into
-// the wrong application's.
+// menuActions maps each declared item's tag to what choosing it does. It must
+// be package-level state: the menu callback re-enters Go from Objective-C
+// carrying nothing but the chosen item's integer tag, so no instance, closure
+// or argument can carry the owning bar across, and a tag-keyed registry behind
+// a mutex is the only bridge. Tags are handed out here and never reused, so a
+// stale callback for a superseded bar's item resolves to that bar and posts
+// into a stream nobody reads rather than into another bar's.
 var (
 	menuMu      sync.Mutex
 	menuActions = map[int]menuAction{}

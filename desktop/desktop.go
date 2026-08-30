@@ -67,10 +67,7 @@ func ShowWindowButtons(w *mvu.Window) {
 // The placement is re-applied by the same re-assertion that re-shows the
 // buttons, because AppKit rebuilds the title bar's layout on a window resize
 // and on every configuration change, and each rebuild puts the buttons back.
-// What that costs, per re-assertion: five view frames assigned on the AppKit
-// main thread, no allocation and no drawing, and a resize subscription
-// [ShowWindowButtons] would have taken out anyway. Off macOS the call compiles
-// to an empty function.
+// Off macOS the call compiles to an empty function.
 //
 // Call it after [ShowWindowButtons]; a placement asked for before there is a
 // window is remembered and applied to the first re-assertion that finds one.
@@ -118,11 +115,9 @@ func PlaceWindowButtonsAt(leading, center unit.Dp) {
 // says 28, and a hardcoded value fails in the direction that clips content.
 //
 // That zero is this package's answer, not AppKit's: a window's content layout
-// rect does not shrink when the buttons move, and the window goes on reporting
-// the same 32 dp strip it reported before. Nothing in AppKit will report a
-// collapsed strip, so this reports the question the caller is really asking —
-// how much is left above me that is not mine — and answers it from who owns
-// the row rather than from a number the system does not offer.
+// rect does not shrink when the buttons move, and AppKit goes on reporting the
+// same strip. The question answered here is how much is left above the caller
+// that is not the caller's, which follows from who owns the row.
 //
 // The measurement is maintained by [ShowWindowButtons]'s re-assertion: until
 // the window's first frame TopInset reports 0, and on platforms other than

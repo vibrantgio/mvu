@@ -48,9 +48,8 @@ import (
 //
 // ZoneGroup carries a mutex because its two sides run on different
 // goroutines: recording happens on the render goroutine while Hit is called
-// from the drop pipeline — drops arriving out-of-band is the whole point of
-// the registry. The critical sections are constant-time appends and one
-// bounded scan, so no caller is meaningfully blocked.
+// from the drop pipeline, which resolves drops arriving out-of-band. The
+// critical sections are constant-time appends and one bounded scan.
 type ZoneGroup struct {
 	mu   sync.Mutex
 	last []ZoneRect // last completed frame's zones, in recording order
