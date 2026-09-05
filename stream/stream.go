@@ -1,4 +1,4 @@
-// Package stream provides the one observable primitive for cross-widget state
+// Package stream provides the one observable primitive for cross-component state
 // that is neither a message nor a frame-local value: a slow-changing value
 // several consumers observe, such as the user's persisted preferences.
 //

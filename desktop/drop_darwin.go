@@ -22,7 +22,7 @@ import (
 // one view class, so adding the drag selectors to it is per-class and
 // therefore process-global and permanent: exactly once per process, however
 // many windows and drop targets exist. Per-view registration is the separate,
-// repeated half — see DropTarget.register.
+// repeated half — see `DropTarget.register`.
 var addDropMethodsOnce sync.Once
 
 // viewTargets maps each registered native view pointer to the DropTarget
@@ -105,7 +105,7 @@ func (d *DropTarget) release() {
 	debugf("desktop: drop target released view %#x", view)
 }
 
-// register performs the AppKit half on the main thread, through the
+// `register` performs the AppKit half on the main thread, through the
 // window's Run — the only sanctioned door to the native event-loop thread;
 // calling AppKit from any other goroutine appears to work and then fails
 // intermittently. The class augmentation runs once per process; the

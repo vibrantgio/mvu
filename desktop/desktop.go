@@ -25,7 +25,7 @@ func FullSizeContent() []app.Option {
 // miniaturize and zoom, the traffic lights — visible on a window opened with
 // the [FullSizeContent] options. Gio re-hides them every time it rebuilds the
 // native window's configuration, so a single unhide cannot hold:
-// ShowWindowButtons registers with w's OnConfigure notification and
+// ShowWindowButtons registers a handler with w's OnConfigure notification and
 // re-asserts the buttons after the window's first frame and after every
 // Option call on w. Call it once, right after constructing w; on platforms
 // other than macOS it does nothing.
@@ -127,7 +127,7 @@ func PlaceWindowButtonsAt(leading, center unit.Dp) {
 // The strip is not as dead as a native title bar looks. Under the
 // full-size-content treatment the Gio view spans the whole window frame and
 // wins the hit test throughout the strip — everywhere except over the window
-// buttons themselves, which keep a few dp of slop around them — so widgets
+// buttons themselves, which keep a few dp of slop around them — so components
 // drawn up there do receive their clicks. What the strip does not give back is
 // the native drag: the title-bar view never sees the press, so the window
 // cannot be moved by its top edge until the application claims a region for it

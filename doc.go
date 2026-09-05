@@ -20,15 +20,15 @@
 //
 // # Messages come out of a frame, not out of a callback
 //
-// Widget code hands a message to the loop with [MessageOp]:
+// Component code hands a message to the loop with [MessageOp]:
 //
 //	mvu.MessageOp{Message: SelectItem{ID: id}}.Add(gtx.Ops)
 //
 // The collector is keyed on the exact *op.Ops the current frame is being
 // recorded into, and an Add against any other buffer is dropped silently — no
-// panic, no error, just a message that never arrives. A widget whose body is
+// panic, no error, just a message that never arrives. A component whose body is
 // recorded into a private op.Ops, as a caching layer does, therefore cannot
-// emit: emit from the widget that owns gtx.Ops, never from inside a cached
+// emit: emit from the component that owns gtx.Ops, never from inside a cached
 // recording.
 //
 // # Platform handles arrive as view events
@@ -82,7 +82,7 @@
 // underlying window and then notifies every func registered with
 // [Window.OnConfigure]: once after the first frame — covering construction
 // options and Gio's own initial configuration — and again after every later
-// Option call. A platform adapter that pokes the native window registers
+// Option call. A platform adapter that pokes the native window registers a handler
 // there and re-asserts its adjustment on each notification. The raw handle
 // from [Window.Window] stays available, but options applied through it
 // bypass the notification.

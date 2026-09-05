@@ -41,7 +41,7 @@ import (
 // spanning the window is the usual one — says [DragTop] again on top of it,
 // over the same height, to give the strip back.
 //
-// The returned widget reports the size it was given rather than the inset one,
+// The returned component reports the size it was given rather than the inset one,
 // [InsetTop]'s contract, so a layer capped here still measures as the whole
 // window and anything anchored to the window's foot stays there. Where height
 // reports 0 — before the first frame, in headless rendering, and on every

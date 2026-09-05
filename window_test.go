@@ -47,7 +47,7 @@ func TestOptionNotifiesRegistrantsInOrder(t *testing.T) {
 
 // TestFirstFrameNotifiesExactlyOnce asserts the first-frame hook that Render's
 // FrameEvent arm invokes: registrants fire once on the first frame — covering
-// construction-time options applied before anyone could register — and never
+// construction-time options applied before anyone could register a handler — and never
 // again from that path, while later Option calls still notify.
 func TestFirstFrameNotifiesExactlyOnce(t *testing.T) {
 	w := NewWindow(app.Title("seam"))

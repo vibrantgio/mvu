@@ -51,8 +51,8 @@ type DropTarget struct {
 	view uintptr // the native view currently registered; 0 while detached
 }
 
-// NewDropTarget registers w as a drop target for the given payload kinds and
-// returns the target delivering its messages. Passing no kinds registers
+// NewDropTarget makes w a drop target for the given payload kinds and
+// returns the target delivering its messages. Passing no kinds defaults to
 // [FileURLs]; passing any kind this package does not implement panics, so an
 // unsupported kind fails at construction rather than as silently refused
 // drags. zones is the window's zone registry and must not be nil — an
@@ -88,7 +88,7 @@ func NewDropTarget(w *mvu.Window, zones *ZoneGroup, kinds ...string) *DropTarget
 	go d.track()
 	// The view-event subscription is the registration lifecycle: a valid
 	// event means the native view joined a window (register the drop target
-	// on it — registration is per view instance, so every attach registers
+	// on it — registration is per view instance, so every attach registers it
 	// again), an invalid one means it left (drop every native reference),
 	// and completion means the window was destroyed (end the pipeline).
 	w.ViewEvents().Subscribe(rx.GoroutineContext(), func(e app.ViewEvent, err error, done bool) {

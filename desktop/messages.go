@@ -4,7 +4,7 @@ import "image"
 
 // FileURLs is the payload kind for file URLs dragged in from the Finder or
 // another application, named by its MIME type the way Gio's transfer package
-// types its payloads. It is the one kind a [DropTarget] registers today;
+// types its payloads. It is the one kind a [DropTarget] accepts today;
 // further kinds — images, text, custom types — are an additive extension
 // that will deliver message types of their own, so a file path list is one
 // registered payload shape rather than the only concept the API has.

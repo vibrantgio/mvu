@@ -11,8 +11,8 @@ import (
 
 // The stubs keep the package compiling and callable on every platform. The
 // treatment is macOS-only, and away from macOS the exported API returns no
-// options — never a borderless window on Linux or Windows — registers
-// nothing and reports no insets.
+// options — never a borderless window on Linux or Windows — registers no
+// handler and reports no insets.
 
 func fullSizeContent() []app.Option { return nil }
 

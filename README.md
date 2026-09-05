@@ -7,7 +7,7 @@ It wraps Gio's window/event loop in a lightweight runtime that lets you describe
 - a **model**: the current application state,
 - **messages**: values that describe something that happened,
 - an **update function**: pure-ish state transition logic that reacts to messages,
-- a **view function**: a Gio widget derived from the current model, and
+- a **view function**: a Gio component derived from the current model, and
 - **commands**: asynchronous or deferred work that can emit more messages.
 
 The library is intentionally minimal. It does not prescribe a widget toolkit, styling system, or message hierarchy. A message is simply `any`, a view is a standard `layout.Widget`, and rendered layers are reactive `rx.Observable[layout.Widget]` values.
@@ -22,7 +22,7 @@ Gio gives you immediate-mode UI primitives and direct access to the application 
 4. the window is invalidated and rendered,
 5. commands can emit more messages back into the loop.
 
-This keeps state changes explicit while preserving the flexibility of Gio widgets and operations.
+This keeps state changes explicit while preserving the flexibility of Gio components and operations.
 
 ## Features
 
@@ -32,7 +32,7 @@ This keeps state changes explicit while preserving the flexibility of Gio widget
 - Helpers for no-op, sequential, and concurrent commands.
 - `MessageOp` for emitting messages from inside Gio layout code.
 - `stream.Value`, the one observable primitive for state several consumers watch.
-- Reactive window renderer that composes one or more observable widget layers.
+- Reactive window renderer that composes one or more observable component layers.
 - Direct access to the underlying `*app.Window` when needed.
 - Compatible with Gio `v0.10.2`.
 
@@ -193,7 +193,7 @@ func update(model Model, message mvu.Message) (Model, mvu.Command) {
 ```go
 func view(model Model) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
-		// Draw using regular Gio operations and widgets.
+		// Draw using regular Gio operations and components.
 		return layout.Dimensions{Size: gtx.Constraints.Max}
 	}
 }
@@ -338,7 +338,7 @@ The `example` module contains small Gio programs demonstrating direct window ren
 
 - `example/01-minimal` — minimal window setup.
 - `example/04-hello` — layered rendering with a backdrop and text.
-- `example/edit` — Gio editor widgets inside reactive layers.
+- `example/edit` — Gio editor components inside reactive layers.
 - `example/tweening` — animated color transitions driven by observables.
 
 To run an example:

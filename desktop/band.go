@@ -137,7 +137,7 @@ func BandLeadFrom(buttonsEnd, gap, gutter unit.Dp) unit.Dp {
 	return gutter
 }
 
-// InsetTop wraps w in a widget that offsets it down by height and reports the
+// InsetTop wraps w in a component that offsets it down by height and reports the
 // full size it was given rather than the inset one — so the layer it wraps
 // still measures as the whole window, and the strip above it keeps whatever
 // is painted underneath.
@@ -150,7 +150,7 @@ func BandLeadFrom(buttonsEnd, gap, gutter unit.Dp) unit.Dp {
 // macOS included — the wrapper is an exact no-op, w laid out in the context
 // it was handed and nothing recorded around it.
 //
-// The wrapped widget's constraints lose the inset from their maximum height,
+// The wrapped component's constraints lose the inset from their maximum height,
 // and their minimum follows the maximum down rather than exceeding it, so a
 // layer that fills what it is given ends flush with the bottom of the window
 // instead of overhanging it by the inset.

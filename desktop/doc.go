@@ -22,7 +22,7 @@
 //
 // Gio rebuilds the native window's configuration on every option change, and
 // each rebuild re-hides the standard window buttons, so a one-shot unhide is
-// wrong by construction. [ShowWindowButtons] therefore registers with
+// wrong by construction. [ShowWindowButtons] therefore registers a handler with
 // [github.com/vibrantgio/mvu.Window.OnConfigure] and re-asserts the buttons
 // after the window's first frame and after every
 // [github.com/vibrantgio/mvu.Window.Option] call. That only covers options
@@ -58,12 +58,12 @@
 // the band's own gutter where it does not. [InsetTop] is the other side of
 // that coin: it pads a layer down past a strip the application has not
 // claimed, reading the height afresh each frame. All four are geometry in dp
-// and nothing else — a band's ground and its type belong to the packages that
+// and nothing else — a band's background and its type belong to the packages that
 // know about colour, which are above this one.
 //
 // Two things measured about that row, both easy to assume wrongly. The Gio
 // view spans the whole window frame and wins the hit test throughout the
-// strip, so widgets drawn there do receive clicks — everywhere except over the
+// strip, so components drawn there do receive clicks — everywhere except over the
 // buttons, which keep a few dp of slop around them. And precisely because the
 // native title-bar view never sees the press, the window can no longer be
 // dragged by its top edge: the drag leaves with the strip, and the region that
@@ -97,7 +97,7 @@
 //	models, runner := mvu.Loop(rx.Merge(w.Messages(), drops.Messages()), Init, Update)
 //
 // and in the view, each frame: zones.Update(gtx), then zones.Zone(gtx, i,
-// origin, widget) for every target. Payload kinds are MIME-shaped, with
+// origin, component) for every target. Payload kinds are MIME-shaped, with
 // [FileURLs] the one kind registered today; drops of anything else are
 // refused at the window edge by the OS itself.
 //
@@ -148,9 +148,9 @@
 // but the view can leave its window and a replacement can appear, so the
 // drop target re-registers on the window's view events — registering on
 // every valid event (attach) and dropping every native reference on the
-// invalid one (detach). Neither tenant registers on the other's
+// invalid one (detach). Neither tenant registers a handler on the other's
 // notification, and neither needs to: window-level state re-asserts on
-// configuration, view-instance state re-registers on attachment. The
+// configuration, view-instance state re-registers its handler on attachment. The
 // raw-handle warning above is the chrome's alone — drop registration does
 // not depend on how options are applied.
 //

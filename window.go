@@ -64,7 +64,7 @@ func (w *Window) Option(options ...app.Option) {
 	w.notifyConfigure()
 }
 
-// OnConfigure registers f to run after the window's configuration may have
+// OnConfigure registers the handler f to run after the window's configuration may have
 // changed. The notification carries no information about what changed — its
 // meaning is "the native window's configuration may have been rebuilt;
 // re-assert whatever you asserted directly against the native window".

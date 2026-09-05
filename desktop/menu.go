@@ -54,7 +54,7 @@ type MenuItem struct {
 
 	// Msg is the message posted when the item is chosen. The same value is
 	// posted on every choice, so it is a value the application's update
-	// function reads as an intent — [MenuBar] never mutates it.
+	// function reads as its purpose — [MenuBar] never mutates it.
 	Msg mvu.Message
 }
 
@@ -164,7 +164,7 @@ func (m *MenuBar) Messages() rx.Observable[mvu.Message] {
 //
 // On a full buffer the choice is dropped and said so, rather than evicted
 // oldest-first the way hover events are: every menu choice is a distinct
-// intent a person expressed, none supersedes another, and losing the newest
+// purpose a person expressed, none supersedes another, and losing the newest
 // is no worse than losing the oldest. A full buffer means nothing is draining
 // the stream, which is a wiring bug the log names.
 func (m *MenuBar) post(msg mvu.Message) {

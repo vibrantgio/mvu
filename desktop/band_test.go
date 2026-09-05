@@ -103,7 +103,7 @@ func bandGtx(w, h int) layout.Context {
 }
 
 func TestInsetTop(t *testing.T) {
-	// The wrapped widget records the constraints it was handed, so the
+	// The wrapped component records the constraints it was handed, so the
 	// test can assert on what the inset did to them rather than on pixels.
 	var seen layout.Constraints
 	probe := func(gtx layout.Context) layout.Dimensions {
@@ -122,17 +122,17 @@ func TestInsetTop(t *testing.T) {
 		}
 	})
 
-	t.Run("an inset shortens the widget and not the layer", func(t *testing.T) {
+	t.Run("an inset shortens the component and not the layer", func(t *testing.T) {
 		gtx := bandGtx(400, 300)
 		dims := InsetTop(func() unit.Dp { return 32 }, probe)(gtx)
 		if seen.Max.Y != 268 {
-			t.Errorf("wrapped widget's max height = %d, want 268 — the window less the strip", seen.Max.Y)
+			t.Errorf("wrapped component's max height = %d, want 268 — the window less the strip", seen.Max.Y)
 		}
 		if seen.Min.Y != 268 {
-			t.Errorf("wrapped widget's min height = %d, want 268 — the minimum must follow the maximum down", seen.Min.Y)
+			t.Errorf("wrapped component's min height = %d, want 268 — the minimum must follow the maximum down", seen.Min.Y)
 		}
 		if seen.Max.X != 400 {
-			t.Errorf("wrapped widget's width = %d, want 400 — the inset is vertical only", seen.Max.X)
+			t.Errorf("wrapped component's width = %d, want 400 — the inset is vertical only", seen.Max.X)
 		}
 		if want := (image.Pt(400, 300)); dims.Size != want {
 			t.Errorf("size = %v, want %v — the layer still measures as the whole window", dims.Size, want)

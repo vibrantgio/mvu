@@ -76,7 +76,7 @@ func TestDragRunIsAsDeepAsTheRow(t *testing.T) {
 	moves := movesAt(t, gtx.Ops)
 	for _, p := range []image.Point{{X: 0, Y: 0}, {X: 60, Y: 26}, {X: 119, Y: 51}} {
 		if !moves(p.X, p.Y) {
-			t.Errorf("no window-move action at %v; the run reaches the row's top and foot", p)
+			t.Errorf("no window-move action at %v; the run spans the row's top and foot", p)
 		}
 	}
 	if moves(120, 26) {
