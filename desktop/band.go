@@ -52,7 +52,7 @@ type ButtonRun struct {
 	// Center is the horizontal line the three circles are centred on, below
 	// the window's top edge: [PlaceWindowButtonsAt]'s second argument, and
 	// the line anything else standing in the band centres on if the band is
-	// to read as one row of furniture.
+	// to read as one row of chrome.
 	Center unit.Dp
 
 	// Diameter is the drawn diameter of one circle — [WindowButtonDiameter],
