@@ -87,6 +87,22 @@
 // from [Window.Window] stays available, but options applied through it
 // bypass the notification.
 //
+// # The window can remember its frame
+//
+// [RememberFrame] is one opt-in call at window construction, given the
+// application's name, after which the window reopens where and how the user
+// last left it. The frame — the size and position together — is kept as JSON
+// in the OS config directory under that name, written after a change stands
+// still rather than per frame, and nothing is written until the first change
+// after launch. A missing or damaged file, or a frame that no longer lands on
+// any screen, leaves the options passed to [NewWindow] standing.
+//
+// Position is remembered on macOS, where it is read from and applied to the
+// native window. Every other platform remembers the size alone: neither Gio's
+// [app.Config] nor any window option carries a position there, so there is
+// nothing to read or to apply, and a position written on macOS is loaded and
+// ignored.
+//
 // # Threading
 //
 // [Window.Render] reads window events and calls Frame on one goroutine, because

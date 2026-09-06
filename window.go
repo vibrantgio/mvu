@@ -23,6 +23,11 @@ type Window struct {
 	configMu    sync.Mutex
 	onConfigure []func()
 	configured  bool // the first FrameEvent has been delivered
+
+	// frame is the window's frame memory, nil unless [RememberFrame] was
+	// called. It is an atomic pointer because Render's goroutine reads it on
+	// every frame while the caller of RememberFrame writes it once.
+	frame atomic.Pointer[frameMemory]
 }
 
 // viewEventBuffer is the capacity of the per-window view-event channel. View
@@ -236,6 +241,7 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 			}
 			switch e := e.(type) {
 			case app.DestroyEvent:
+				w.stopFrameMemory()
 				if layersSub != nil {
 					layersSub.Unsubscribe()
 				}
@@ -251,6 +257,7 @@ func (w *Window) Render(layers ...rx.Observable[layout.Widget]) rx.Subscription 
 				return
 			case app.FrameEvent:
 				w.notifyFirstFrame()
+				w.recordFrame(e.Size.X, e.Size.Y, e.Metric)
 				gtx := app.NewContext(ops, e)
 				var frameMessages []MessageOp
 				registerCollector(ops, &frameMessages)
