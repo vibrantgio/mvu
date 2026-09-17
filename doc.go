@@ -65,14 +65,13 @@
 // model and never blocks the loop. A fact whose every occurrence is
 // load-bearing belongs in a message, not in the model stream.
 //
-// An application that still wraps models in Publish().AutoConnect(N) keeps
-// that gate's arithmetic: N must equal the number of cold subscriptions the
-// topology makes, too high never connects at all — the window's messages are
-// never drained, and because that channel holds exactly one MessageOp the
-// event goroutine blocks on the second one it tries to hand over and the
-// window stops painting — and neither failure logs anything. The gate buys
-// nothing the models observable does not already give, so a topology that
-// gains a consumer is better off dropping it than re-counting.
+// Wrapping models in a Publish().AutoConnect(N) of its own buys nothing the
+// observable does not already give, and it costs: a gate set below the
+// topology's real subscription count leaves the consumers that attach after
+// it with no model, and one set above it never connects at all — the window's
+// messages are never drained, and because that channel holds exactly one
+// MessageOp the event goroutine blocks on the second one it tries to hand
+// over and the window stops painting. Neither failure logs anything.
 //
 // # The window owns its Option boundary
 //
