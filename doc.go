@@ -46,33 +46,33 @@
 // on overflow, completion on destroy — is on the method. Applications without
 // a platform adapter never call it.
 //
-// # AutoConnect counts are load-bearing, and both errors are silent
+// # The models observable carries the current model
 //
-// [Loop] returns the models observable and the command runner. Models emits the
-// seed first and never replays: a subscriber that attaches later is handed that
-// same seed rather than the current model — with the model already advanced to
-// 5, a freshly attached subscriber was measured receiving 0. A layer topology
-// with N consumers therefore multicasts with models.Publish().AutoConnect(N),
-// which holds the connect back until all N have attached so the seed reaches
-// every one of them.
+// [Loop] returns the models observable and the command runner. Models is a
+// replay-latest multicast: every subscriber observes the model in force the
+// moment it attaches, so a layer topology needs no consumer count and no
+// Publish().AutoConnect(N) of its own. Subscribe it as many times as the
+// topology has consumers, at whatever time they attach.
 //
-// N must equal the number of cold subscriptions the topology actually makes.
-// Too low and the loop connects early, so the late consumers render a zero
-// Model. Too high and it never connects at all: the window's messages are never
-// drained, and because that channel holds exactly one MessageOp the event
-// goroutine blocks on the second one it tries to hand over, and the window
-// stops painting. Neither failure logs anything. Keep N static — never
-// subscribe the model observable from a per-row factory, which attaches after
-// the seed has fired — and let a test count the subscriptions instead of
-// tuning the number by hand.
+// Late subscription is not a corner case. A consumer handed an observable of
+// observables flattens it, and so re-subscribes everything it combines the
+// inner one with every time the outer one emits. A window that feeds its
+// model into such a consumer therefore re-subscribes the model mid-flight,
+// and a stream without replay would leave that consumer with no model at all
+// until the next message.
 //
-// What enters the count is subscriptions to models, nothing else. The
-// window's channel-backed streams — [Window.Messages] and [Window.ViewEvents]
-// — are outside the multicast: messages is an input Loop subscribes exactly
-// once, and view events flow to a platform adapter without touching the loop
-// at all. Subscribing ViewEvents, or merging another rx.Recv-backed message
-// source into Loop's input, changes N by exactly zero; only a new subscriber
-// of the models observable moves it.
+// Models conflates: a consumer that falls behind converges on the newest
+// model and never blocks the loop. A fact whose every occurrence is
+// load-bearing belongs in a message, not in the model stream.
+//
+// An application that still wraps models in Publish().AutoConnect(N) keeps
+// that gate's arithmetic: N must equal the number of cold subscriptions the
+// topology makes, too high never connects at all — the window's messages are
+// never drained, and because that channel holds exactly one MessageOp the
+// event goroutine blocks on the second one it tries to hand over and the
+// window stops painting — and neither failure logs anything. The gate buys
+// nothing the models observable does not already give, so a topology that
+// gains a consumer is better off dropping it than re-counting.
 //
 // # The window owns its Option boundary
 //

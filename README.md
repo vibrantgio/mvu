@@ -286,7 +286,7 @@ func Loop[Model any](messages rx.Observable[Message],
 ```
 
 - `Run` starts the MVU loop on a window and renders the view mapped over the models after any additional layers. Additional layers are useful for persistent backgrounds, overlays, animations, or debug UI that are driven by independent observables.
-- `Loop` is the message/command loop alone, for apps that own their rendering — e.g. a theme window whose `Render` takes a theme-fed layer builder. It returns the cold models observable (seed first; apply `Publish().AutoConnect(N)` for N consumers) and the command runner subscription (`defer func() { runner.Unsubscribe(); runner.Wait() }()`). Commands returned by `update` — including long-running streams — emit messages that feed back into the loop; a command error is contained to that command.
+- `Loop` is the message/command loop alone, for apps that own their rendering — e.g. a theme window whose `Render` takes a theme-fed layer builder. It returns the models observable — a replay-latest multicast, so any number of consumers may subscribe at any time and each observes the model in force, with no consumer count to keep — and the command runner subscription (`defer func() { runner.Unsubscribe(); runner.Wait() }()`). Commands returned by `update` — including long-running streams — emit messages that feed back into the loop; a command error is contained to that command.
 
 ### `Window`
 

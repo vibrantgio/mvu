@@ -15,14 +15,22 @@ import (
 // init is called once, when Loop is; its command runs as soon as the runner
 // starts.
 //
-// The returned models observable emits the seed model first (StartWith) and
-// then one model per message. It is never replayed: the scan behind it is
-// already multicast, so a second direct subscriber does not re-run update, but
-// it is handed the seed rather than the model current at the time it attached.
-// A single consumer can subscribe it directly; a layer topology with N
-// consumers applies Publish().AutoConnect(N), which holds the connect back
-// until all N have attached so the seed reaches every one of them. The scan
-// connects — and messages start draining — when the models side is subscribed.
+// The returned models observable is a replay-latest multicast: it carries the
+// current model — the seed until the first message, the newest model after
+// that — and hands it to every subscriber the moment it attaches, however late
+// and however many. That is what a consumer subscribing outside application
+// start-up needs: a consumer that flattens an observable of observables
+// re-subscribes whatever it combines the inner one with every time the outer
+// one emits, and a stream without replay leaves such a re-subscriber with no
+// value until the next message. No consumer count is involved.
+//
+// It conflates: a consumer that falls behind converges on the newest model
+// rather than receiving every intermediate one, and never blocks the loop. A
+// model is state, so the newest one is the whole answer; a fact whose every
+// occurrence is load-bearing belongs in a message, not in the model stream.
+//
+// The scan connects — and messages start draining — when the first consumer
+// subscribes, and disconnects when the last one leaves.
 //
 // The returned runner executes commands until unsubscribed. A command error
 // is reported and terminates that command only, never the loop. Callers stop
@@ -45,7 +53,7 @@ func Loop[Model any](
 			model, command := update(s.model, message)
 			return state{model: model, command: command}
 		}).Publish().AutoConnect(2)
-	models = rx.Map(updater, func(s state) Model { return s.model }).StartWith(seed)
+	models = rx.Map(updater, func(s state) Model { return s.model }).Behavior(seed).RefCount()
 	commands := rx.Map(updater, func(s state) Command { return s.command }).StartWith(initial)
 	runner = rx.MergeMap(commands, func(cmd Command) rx.Observable[any] {
 		return cmd.Pipe(
