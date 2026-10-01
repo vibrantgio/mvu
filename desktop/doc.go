@@ -110,7 +110,7 @@
 // Gio builds a fixed menu bar — one application menu holding Hide and Quit —
 // in its own darwin glue, before the run loop starts, and offers no way to
 // add to it. NSApp's main menu is an ordinary mutable menu all the same, so
-// [NewMenuBar] amends it in place: [MenuItem] values declare a menu, a label,
+// [NewMenuBar] amends it in place: [MenuItem] values declare a menu, a title,
 // a one-character chord with the command modifier implied, and the message
 // choosing the item posts.
 //

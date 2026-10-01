@@ -36,8 +36,8 @@ type MenuItem struct {
 	// [ApplicationMenu], the empty title, is the application's own menu.
 	Menu string
 
-	// Title is the item's own label, shown as written. It is required: an
-	// item with no label is a bug, not a separator.
+	// Title is the item's own text, shown as written. It is required: an
+	// item with no title is a bug, not a separator.
 	Title string
 
 	// Key is the item's key equivalent — one character, with this platform's
@@ -129,7 +129,7 @@ func NewMenuBar(w *mvu.Window, items ...MenuItem) *MenuBar {
 	for i, it := range m.items {
 		if it.Title == "" {
 			menuMu.Unlock()
-			panic("desktop: MenuItem needs a Title (an item with no label is a bug, not a separator)")
+			panic("desktop: MenuItem needs a Title (an item with no title is a bug, not a separator)")
 		}
 		if it.Key != "" && utf8.RuneCountInString(it.Key) != 1 {
 			menuMu.Unlock()

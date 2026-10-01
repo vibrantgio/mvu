@@ -48,7 +48,7 @@ func DragBand(gtx layout.Context, r image.Rectangle) {
 // run's own dimensions so that it can stand in a flex as the gap it is.
 //
 // The depth is the row's whole height rather than a band around the line its
-// labels sit on, because the run a hand aims for is the one it can see — the
+// titles sit on, because the run a hand aims for is the one it can see — the
 // strip from the row's top edge to its foot.
 //
 // A run with no height claims nothing and still reports its width, so a row
