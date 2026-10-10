@@ -37,7 +37,7 @@ import (
 //
 // A region recorded after this call, over the whole window, is a different
 // matter: it shadows the claim wherever it lies, and the strip goes with it.
-// A window that lays such a region over its page — a modal's key catcher
+// A window that lays such a region over its page — a dialog's key catcher
 // spanning the window is the usual one — says [DragTop] again on top of it,
 // over the same height, to give the strip back.
 //
