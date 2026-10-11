@@ -54,3 +54,12 @@ func topInset() unit.Dp {
 func leadingInset() unit.Dp {
 	return unit.Dp(C.vgio_desktop_leading_inset())
 }
+
+// closeWindow closes through AppKit rather than through Gio's close action,
+// and does not wait for it. The hop is asynchronous for the same reason the
+// re-assertion's is: the caller is a loop goroutine, the main thread may be
+// parked inside Gio's frame handoff, and a synchronous hop would deadlock
+// there.
+func closeWindow(*mvu.Window) {
+	C.vgio_desktop_close()
+}

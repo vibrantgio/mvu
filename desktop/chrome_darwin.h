@@ -10,6 +10,16 @@
 // no application or no titled window exists.
 extern void vgio_desktop_reassert(void);
 
+// vgio_desktop_close closes the application's window — its first titled
+// window, the one the re-assertion treats — the way AppKit's own close does,
+// and makes Gio's destroy event reachable so the mvu run ends with it: Gio
+// raises that event from its view's dealloc alone, and a closed window goes
+// on holding the view, so the window is handed a content view of its own and
+// the view is deallocated. Asynchronous unless already on the main thread; a
+// no-op while no application or no titled window exists. Safe to call from
+// any thread.
+extern void vgio_desktop_close(void);
+
 // vgio_desktop_place_buttons records the placement the standard window
 // buttons are to take — leading is where the group's leading edge sits, in
 // AppKit points in from the leading edge of the window frame, and center is

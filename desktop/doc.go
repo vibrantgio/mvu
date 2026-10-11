@@ -2,9 +2,10 @@
 // [github.com/vibrantgio/mvu.Window] — in place, without forking Gio. It has
 // three tenants behind the same seam: the macOS full-size-content window
 // chrome (content extending behind a transparent title bar, the three
-// standard window buttons floating over it), OS file drops, and the
-// application's menu bar — the last two delivered into the application's
-// message loop as ordinary messages.
+// standard window buttons floating over it, and the close those buttons and
+// the application share), OS file drops, and the application's menu bar —
+// the last two delivered into the application's message loop as ordinary
+// messages.
 //
 // The package is safe to call from platform-neutral code: every entry point
 // compiles everywhere and quietly does nothing away from macOS.
@@ -83,6 +84,22 @@
 // treatment's borderless option still is on macOS. Applications with several
 // windows are beyond the chrome's contract. File drops carry no such limit:
 // a [DropTarget] is per window, and every window gets its own.
+//
+// # The window's close
+//
+// A window that closes must also end its run, and on macOS that does not
+// follow from the close. Gio raises its destroy event — the event that ends
+// an mvu run — from its view's dealloc alone, and a closed window goes on
+// holding that view, so the run can sit in its event loop with nothing on
+// screen. [Close] closes the window and drops that hold, so the view is
+// deallocated and the run ends; [ShowWindowButtons] arranges the same for
+// every other way the window closes, the window's own close button included,
+// from the window's first frame onwards.
+//
+// A close is not a quit. It ends one window's run and leaves the process to
+// the application, which quits when its own main returns. The platform's
+// Quit — the application menu's item, the Dock's, a log-out — reaches
+// nothing here.
 //
 // # File drops
 //
@@ -200,6 +217,13 @@
 // can, but never fakes a drag. The drag path itself is verified by a manual
 // script run on a Mac; treat any change to the native half as unverified
 // until that script has been run again.
+//
+// The close is verified on a real window, because that is where the thing it
+// repairs lives: a child process opens a treated window, lets it settle past
+// the point where AppKit would have deallocated it on its own, asks the
+// close, and reports whether the run ended. It runs in a child because a
+// window takes the process's main goroutine for app.Main and never gives it
+// back. Without a window server it reports that instead, and the test skips.
 //
 // The menu bar is the same shape of claim. A test binary has no
 // NSApplication and therefore no menu bar, so the tests cover the

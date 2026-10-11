@@ -51,11 +51,16 @@ static bool vgio_desktop_moved_x = false;
 static double vgio_desktop_home_x[3];
 static double vgio_desktop_home_lead = 0;
 
-// The resize subscription. AppKit re-lays the title-bar container on every
-// size change, which undoes a placement, and Gio's configuration notification
-// does not fire for a user drag of the window's corner — so the placement
-// subscribes to the window's own resize notification and re-applies there.
+// The subscriptions on the window itself, and the window they are on.
+//
+// The resize one exists because AppKit re-lays the title-bar container on
+// every size change, which undoes a placement, and Gio's configuration
+// notification does not fire for a user drag of the window's corner — so the
+// placement subscribes to the window's own resize notification and re-applies
+// there. The close one exists because Gio's destroy event is otherwise
+// unreachable; vgio_desktop_release_view says why.
 static id vgio_desktop_resize_token = nil;
+static id vgio_desktop_close_token = nil;
 static __weak NSWindow *vgio_desktop_observed = nil;
 
 // The application's window: its first titled window. The full-size-content
@@ -68,6 +73,74 @@ static NSWindow *vgio_desktop_window(void) {
 		}
 	}
 	return nil;
+}
+
+static void vgio_desktop_reassert_main(void);
+
+// Makes Gio's destroy event reachable for a window that is closing.
+//
+// Gio raises that event from its view's dealloc alone, and nothing else
+// deallocates the view: the window holds it as its content view, and the
+// window object survives its own close. Measured on macOS 26: a window
+// closed within the first ~100 ms of its first frame is deallocated by its
+// own close and the event does arrive, and from ~200 ms on the closed window
+// is still alive, still addressable and still holding the view a second
+// later — so the view lives, dealloc never runs, and the run stays in its
+// event loop with no window on screen. Handing the window a content view of
+// its own drops the reference, the view is deallocated, and the run ends
+// with the destroy event.
+//
+// It runs a turn after the notification, because the notification is sent
+// before the close and AppKit finishes that with the view hierarchy it
+// started with.
+static void vgio_desktop_release_view(NSWindow *w) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		if ([w contentView] == nil) {
+			return;
+		}
+		[w setContentView:[[NSView alloc] initWithFrame:NSZeroRect]];
+	});
+}
+
+// Subscribes to the window's own notifications, on the main thread, and
+// moves the subscriptions to another window when the application's window
+// turns out to be a different one. Both halves of the chrome's window-level
+// state hang here, and so does the close, which is why the subscription is
+// its own step rather than part of the re-assertion: a close asked for from
+// the loop must subscribe without re-showing buttons the caller never asked
+// to see.
+static void vgio_desktop_observe(NSWindow *w) {
+	if (vgio_desktop_observed == w) {
+		return;
+	}
+	NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+	if (vgio_desktop_resize_token != nil) {
+		[center removeObserver:vgio_desktop_resize_token];
+		vgio_desktop_resize_token = nil;
+	}
+	if (vgio_desktop_close_token != nil) {
+		[center removeObserver:vgio_desktop_close_token];
+		vgio_desktop_close_token = nil;
+	}
+	vgio_desktop_resize_token = [center
+		addObserverForName:NSWindowDidResizeNotification
+		            object:w
+		             queue:[NSOperationQueue mainQueue]
+		        usingBlock:^(NSNotification *n) {
+			vgio_desktop_reassert_main();
+		}];
+	vgio_desktop_close_token = [center
+		addObserverForName:NSWindowWillCloseNotification
+		            object:w
+		             queue:[NSOperationQueue mainQueue]
+		        usingBlock:^(NSNotification *n) {
+			vgio_desktop_release_view((NSWindow *)[n object]);
+		}];
+	vgio_desktop_observed = w;
+	// A different window means the recorded x positions belong to a window
+	// that is gone; the next horizontal move re-records them from the new
+	// window's own geometry.
+	vgio_desktop_moved_x = false;
 }
 
 // Places the buttons where the last request asked for them, on the main
@@ -184,23 +257,7 @@ static void vgio_desktop_reassert_main(void) {
 	if (w == nil) {
 		return;
 	}
-	if (vgio_desktop_observed != w) {
-		if (vgio_desktop_resize_token != nil) {
-			[[NSNotificationCenter defaultCenter] removeObserver:vgio_desktop_resize_token];
-		}
-		vgio_desktop_resize_token = [[NSNotificationCenter defaultCenter]
-			addObserverForName:NSWindowDidResizeNotification
-			            object:w
-			             queue:[NSOperationQueue mainQueue]
-			        usingBlock:^(NSNotification *n) {
-				vgio_desktop_reassert_main();
-			}];
-		vgio_desktop_observed = w;
-		// A different window means the recorded x positions belong to a
-		// window that is gone; the next horizontal move re-records them
-		// from the new window's own geometry.
-		vgio_desktop_moved_x = false;
-	}
+	vgio_desktop_observe(w);
 	[[w standardWindowButton:NSWindowCloseButton] setHidden:NO];
 	[[w standardWindowButton:NSWindowMiniaturizeButton] setHidden:NO];
 	[[w standardWindowButton:NSWindowZoomButton] setHidden:NO];
@@ -265,6 +322,31 @@ void vgio_desktop_reassert(void) {
 	}
 	dispatch_async(dispatch_get_main_queue(), ^{
 		vgio_desktop_reassert_main();
+	});
+}
+
+// Runs on the main thread only.
+static void vgio_desktop_close_main(void) {
+	NSWindow *w = vgio_desktop_window();
+	if (w == nil) {
+		return;
+	}
+	// The subscription before the close, so the notification this close
+	// sends is the one that reaches vgio_desktop_release_view.
+	vgio_desktop_observe(w);
+	[w close];
+}
+
+void vgio_desktop_close(void) {
+	if (NSApp == nil) {
+		return;
+	}
+	if ([NSThread isMainThread]) {
+		vgio_desktop_close_main();
+		return;
+	}
+	dispatch_async(dispatch_get_main_queue(), ^{
+		vgio_desktop_close_main();
 	});
 }
 

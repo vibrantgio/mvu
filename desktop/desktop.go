@@ -165,3 +165,43 @@ func TopInset() unit.Dp {
 func LeadingInset() unit.Dp {
 	return leadingInset()
 }
+
+// Close closes the window Gio created for w: the window leaves the screen
+// and w's Render returns, because a close raises Gio's destroy event and that
+// event is what ends an mvu run. An application that quits on a message of
+// its own calls Close from its update and lets main return when Render does —
+// one message, one close, no second mechanism.
+//
+// It does not quit the application. Closing a window and quitting are two
+// things here: the process outlives the window until the application's own
+// main returns, and the platform's Quit — the Quit item in the application
+// menu, the Dock's, a log-out — arrives nowhere in this package. An
+// application that must answer those needs a life hook of its own, which this
+// package does not have.
+//
+// On macOS Close closes the window the way AppKit itself closes one, which
+// asks nothing about the window's close button: Gio's own close action goes
+// through performClose:, which AppKit documents as beeping instead of
+// closing when the window has no close button. Close also arranges what
+// AppKit alone does not — that Gio's destroy event arrives. Gio raises that
+// event from its view's dealloc, and a window that has been up for more than
+// a moment goes on holding the view after its own close, so the run would
+// otherwise sit in its event loop with nothing on screen; Close drops the
+// window's hold, the view is deallocated, and the run ends.
+//
+// A window treated with [FullSizeContent] and [ShowWindowButtons] ends its
+// run from its own close button too, from its first frame onwards: the
+// treatment arranges the same destroy for every way that window closes — its
+// button, this call, Gio's close action, and a close the application performs
+// through AppKit itself.
+//
+// Like the rest of the treatment, Close addresses the application's one
+// window, found as its first titled window, and does nothing while the
+// application has no window yet.
+//
+// On every other platform Close is Gio's own close action,
+// system.ActionClose, which closes the window and raises the destroy event
+// there.
+func Close(w *mvu.Window) {
+	closeWindow(w)
+}
