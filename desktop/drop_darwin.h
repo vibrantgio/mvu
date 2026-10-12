@@ -21,8 +21,10 @@
 // that grows its own upstream drag support must win over this package's.
 extern int vgio_drop_add_methods(uintptr_t view);
 
-// vgio_drop_register registers one view instance for file-URL drags.
-// Per-instance: it runs for every view, every time it attaches to a window.
+// vgio_drop_register registers one view instance for drags carrying files —
+// both the file-URL type, for files that exist, and the types a file promise
+// arrives under, for files the source writes when asked. Per-instance: it runs
+// for every view, every time it attaches to a window.
 extern void vgio_drop_register(uintptr_t view);
 
 #endif

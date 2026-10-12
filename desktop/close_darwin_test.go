@@ -56,11 +56,20 @@ const (
 	closeChildDestroy    = 5 * time.Second
 )
 
+// TestMain routes the package's window scenarios. A scenario runs in a child
+// process this binary re-executes with its own variable set: there the main
+// goroutine goes to app.Main and the scenario runs as a plain goroutine,
+// reporting through the exit status. Without a variable set, this is the
+// ordinary test run.
 func TestMain(m *testing.M) {
-	if os.Getenv(closeChildEnv) == "" {
+	switch {
+	case os.Getenv(closeChildEnv) != "":
+		go closeChild()
+	case os.Getenv(dropChildEnv) != "":
+		go dropChild()
+	default:
 		os.Exit(m.Run())
 	}
-	go closeChild()
 	app.Main()
 }
 

@@ -4,6 +4,7 @@ package desktop
 
 import (
 	"image"
+	"slices"
 	"testing"
 
 	"gioui.org/app"
@@ -139,5 +140,176 @@ func TestHandleViewEventLifecycle(t *testing.T) {
 	d.handleViewEvent(app.AppKitViewEvent{})
 	if hasTarget(view) {
 		t.Fatal("invalid view event did not release the view")
+	}
+}
+
+// The tests below exercise the promised-file half of a drop without AppKit:
+// the native side opens a drop with the plain URLs it carried and how many
+// files its promises owe, then reports each file as its reader writes it, and
+// the drop becomes one event when the last one is in. That counting and
+// assembly is Go's, so a test drives it directly — see drop_darwin.m for why the receiving itself cannot
+// be driven from a test, and drop_window_darwin_test.go for the real drops on
+// a real window.
+
+// beginPromisedDropAfterExit opens a promised drop and takes the exit the drop
+// itself delivers, leaving the raw channel holding only what follows.
+func beginPromisedDropAfterExit(t *testing.T, d *DropTarget, view uintptr, pos image.Point, plain []string, promised int) uint64 {
+	t.Helper()
+	drop := beginPromisedDrop(view, pos, plain, promised)
+	evs := rawEvents(d)
+	if len(evs) != 1 || evs[0].kind != dragExit {
+		t.Fatalf("a drop taken for its promises delivered %v, want the hover's exit", evs)
+	}
+	return drop
+}
+
+// promisedDropCount reports how many drops are still being received.
+func promisedDropCount() int {
+	promiseMu.Lock()
+	defer promiseMu.Unlock()
+	return len(promiseDrops)
+}
+
+// TestPromisedDropDeliversOnceTheLastFileIsIn pins the shape of a promise
+// drag: nothing crosses while files are still being written, and the drop then
+// arrives as a single event carrying every received file in the order its
+// promise stood on the pasteboard.
+func TestPromisedDropDeliversOnceTheLastFileIsIn(t *testing.T) {
+	d := bareTarget()
+	const view = 0xD10
+	d.adopt(view)
+	defer d.release()
+
+	drop := beginPromisedDropAfterExit(t, d, view, image.Pt(7, 9), nil, 2)
+	addPromisedFile(drop, "/tmp/mvu-desktop/one/first.m4a")
+	if evs := rawEvents(d); len(evs) != 0 {
+		t.Fatalf("the drop crossed with one file still promised: %v", evs)
+	}
+	addPromisedFile(drop, "/tmp/mvu-desktop/one/second.m4a")
+
+	evs := rawEvents(d)
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want the one drop: %v", len(evs), evs)
+	}
+	if evs[0].kind != dragDrop {
+		t.Fatalf("got kind %v, want dragDrop", evs[0].kind)
+	}
+	if evs[0].pos != image.Pt(7, 9) {
+		t.Fatalf("got pos %v, want (7,9)", evs[0].pos)
+	}
+	want := []string{"/tmp/mvu-desktop/one/first.m4a", "/tmp/mvu-desktop/one/second.m4a"}
+	if !slices.Equal(evs[0].paths, want) {
+		t.Fatalf("got paths %v, want %v", evs[0].paths, want)
+	}
+	if promisedDropCount() != 0 {
+		t.Fatal("the delivered drop is still being received")
+	}
+}
+
+// TestPromisedDropCarriesPlainURLsFirst pins the mixed drag — a source
+// dragging one file that exists and one it promises — as one message, the
+// plain URL ahead of the received file.
+func TestPromisedDropCarriesPlainURLsFirst(t *testing.T) {
+	d := bareTarget()
+	const view = 0xD20
+	d.adopt(view)
+	defer d.release()
+
+	drop := beginPromisedDropAfterExit(t, d, view, image.Pt(1, 2), []string{"/Users/someone/exists.txt"}, 1)
+	addPromisedFile(drop, "/tmp/mvu-desktop/two/promised.m4a")
+
+	evs := rawEvents(d)
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want one drop carrying both: %v", len(evs), evs)
+	}
+	want := []string{"/Users/someone/exists.txt", "/tmp/mvu-desktop/two/promised.m4a"}
+	if !slices.Equal(evs[0].paths, want) {
+		t.Fatalf("got paths %v, want %v", evs[0].paths, want)
+	}
+}
+
+// TestFailedPromiseDeliversWhatArrived pins the failure contract: a promise
+// the source does not fulfil reports no path, and costs its own file only.
+func TestFailedPromiseDeliversWhatArrived(t *testing.T) {
+	d := bareTarget()
+	const view = 0xD30
+	d.adopt(view)
+	defer d.release()
+
+	drop := beginPromisedDropAfterExit(t, d, view, image.Pt(0, 0), []string{"/Users/someone/exists.txt"}, 2)
+	addPromisedFile(drop, "/tmp/mvu-desktop/three/arrived.m4a")
+	addPromisedFile(drop, "") // the promise the source did not fulfil
+
+	evs := rawEvents(d)
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want the drop with what arrived: %v", len(evs), evs)
+	}
+	want := []string{"/Users/someone/exists.txt", "/tmp/mvu-desktop/three/arrived.m4a"}
+	if !slices.Equal(evs[0].paths, want) {
+		t.Fatalf("got paths %v, want %v", evs[0].paths, want)
+	}
+}
+
+// TestEveryPromiseFailedDeliversNothing pins the one silence: a drop whose
+// every promise failed carries no file, and a message with no paths would say
+// a drop happened and hand the application nothing.
+func TestEveryPromiseFailedDeliversNothing(t *testing.T) {
+	d := bareTarget()
+	const view = 0xD40
+	d.adopt(view)
+	defer d.release()
+
+	addPromisedFile(beginPromisedDropAfterExit(t, d, view, image.Pt(0, 0), nil, 1), "")
+
+	if evs := rawEvents(d); len(evs) != 0 {
+		t.Fatalf("a drop with no file crossed anyway: %v", evs)
+	}
+	if promisedDropCount() != 0 {
+		t.Fatal("the empty drop is still being received")
+	}
+}
+
+// TestPromisedFilesAfterTheDropAreIgnored pins that a reader arriving late
+// cannot deliver a second drop or panic: the drop is gone, so what it reports
+// goes nowhere.
+func TestPromisedFilesAfterTheDropAreIgnored(t *testing.T) {
+	d := bareTarget()
+	const view = 0xD50
+	d.adopt(view)
+	defer d.release()
+
+	drop := beginPromisedDropAfterExit(t, d, view, image.Pt(0, 0), nil, 1)
+	addPromisedFile(drop, "/tmp/mvu-desktop/four/only.m4a")
+	addPromisedFile(drop, "/tmp/mvu-desktop/four/late.m4a") // after the drop landed
+
+	if evs := rawEvents(d); len(evs) != 1 {
+		t.Fatalf("got %d events, want one: %v", len(evs), evs)
+	}
+}
+
+// TestPromisedDropEndsTheHoverAtOnce pins that the drag is over when the drop
+// is taken, not when its promised files arrive: the hover's exit crosses
+// immediately, so a highlighted zone clears while the files are still being
+// written.
+func TestPromisedDropEndsTheHoverAtOnce(t *testing.T) {
+	d := bareTarget()
+	const view = 0xD60
+	d.adopt(view)
+	defer d.release()
+
+	drop := beginPromisedDrop(view, image.Pt(3, 4), nil, 1)
+
+	evs := rawEvents(d)
+	if len(evs) != 1 {
+		t.Fatalf("got %d events, want the hover's exit alone: %v", len(evs), evs)
+	}
+	if evs[0].kind != dragExit {
+		t.Fatalf("got kind %v, want dragExit", evs[0].kind)
+	}
+
+	addPromisedFile(drop, "/tmp/mvu-desktop/five/arrived.m4a")
+	evs = rawEvents(d)
+	if len(evs) != 1 || evs[0].kind != dragDrop {
+		t.Fatalf("got %v, want the drop once its file was in", evs)
 	}
 }

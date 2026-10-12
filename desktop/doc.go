@@ -103,11 +103,11 @@
 //
 // # File drops
 //
-// A window accepts files dragged from the Finder by pairing a [ZoneGroup] —
-// the registry of drop-target rectangles, recorded each frame during layout —
-// with a [DropTarget], which performs the native registration and delivers
-// [FilesEntered], [FilesExited] and [FilesDropped] messages resolved against
-// those zones:
+// A window accepts files dragged in from another application by pairing a
+// [ZoneGroup] — the registry of drop-target rectangles, recorded each frame
+// during layout — with a [DropTarget], which performs the native registration
+// and delivers [FilesEntered], [FilesExited] and [FilesDropped] messages
+// resolved against those zones:
 //
 //	zones := &desktop.ZoneGroup{}
 //	drops := desktop.NewDropTarget(w, zones)
@@ -117,6 +117,18 @@
 // origin, component) for every target. Payload kinds are MIME-shaped, with
 // [FileURLs] the one kind registered today; drops of anything else are
 // refused at the window edge by the OS itself.
+//
+// Sources offer files in two shapes and a window accepts both. The Finder
+// drags a URL naming a file that exists. An application that keeps its files
+// in a library of its own drags a promise instead, and the file exists only
+// once the drop asks the promise to be fulfilled — so the drop is read, the
+// files are written, and the one [FilesDropped] follows when the last of them
+// is in, carrying the plain URLs and the received files together. Promised
+// files are written under the system's temporary directory, in a folder named
+// for this package, with a fresh subfolder per drop; the package deletes
+// nothing it writes there, so an application copies what it means to keep. A
+// promise the source fails to fulfil costs its own file alone: the message
+// still arrives with the files that did.
 //
 // Construct the DropTarget before the window starts rendering. It subscribes
 // the window's ViewEvents stream — which mvu documents as single-subscriber —
