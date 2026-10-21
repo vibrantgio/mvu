@@ -1,11 +1,11 @@
 // Package desktop adjusts the native desktop window that Gio creates for a
 // [github.com/vibrantgio/mvu.Window] — in place, without forking Gio. It has
-// three tenants behind the same seam: the macOS full-size-content window
+// four tenants behind the same seam: the macOS full-size-content window
 // chrome (content extending behind a transparent title bar, the three
 // standard window buttons floating over it, and the close those buttons and
-// the application share), OS file drops, and the application's menu bar —
-// the last two delivered into the application's message loop as ordinary
-// messages.
+// the application share), OS file drops, the application's menu bar, and the
+// download of a file the platform keeps in the cloud — the last three
+// delivered into the application's message loop as ordinary messages.
 //
 // The package is safe to call from platform-neutral code: every entry point
 // compiles everywhere and quietly does nothing away from macOS.
@@ -134,6 +134,32 @@
 // the window's ViewEvents stream — which mvu documents as single-subscriber —
 // so constructing a target claims that stream for the window.
 //
+// # Downloads out of the cloud
+//
+// A file the platform keeps in the cloud has no contents on this machine
+// until something asks for them, and reading it is then a refusal or a wait
+// nobody asked for. [Download] makes the ask explicit: it is a command that
+// answers one [Downloaded] when the file is at its path or the download
+// failed.
+//
+//	case OpenNote:
+//		model.Fetching = rel
+//		return model, desktop.Download(filepath.Join(root, rel))
+//	case desktop.Downloaded:
+//		model.Fetching = ""
+//		if m.Err != "" { ... }
+//
+// Whether the item is in the cloud at all is the platform's to decide: the
+// ask is made at the path given, and a path the platform keeps no cloud
+// item for is refused there — a refusal the message carries, so an
+// application never has to guess which of its files are in a cloud. Exactly
+// one message answers every ask, so a window that put up a waiting state
+// always has the message that takes it down.
+//
+// The command waits on the goroutine the loop subscribes it on; nothing of
+// it reaches the window's own thread. Away from macOS it answers at once
+// that nothing is in the cloud.
+//
 // # The application menu
 //
 // Gio builds a fixed menu bar — one application menu holding Hide and Quit —
@@ -183,6 +209,11 @@
 // raw-handle warning above is the chrome's alone — drop registration does
 // not depend on how options are applied.
 //
+// The download is the tenant that listens on nothing. It holds no native
+// state to repair and needs no window: it is one ask about one path, made
+// when the application makes it and answered once. That is why it is a plain
+// command rather than a per-window object like the other three.
+//
 // The menu is neither: it is application-level state that nothing un-does, so
 // it would need no notification at all were it not for timing. It listens on
 // the chrome's, for one reason — at the moment an application declares its
@@ -219,6 +250,9 @@
 //   - Messages reach the loop through the channel path, never through a
 //     frame operation: a frame op recorded outside its own frame is dropped
 //     silently, and a drag callback has no frame at all.
+//   - A download's state is read off a URL built afresh for every poll.
+//     NSURL caches the resource values it has read, so a URL kept across
+//     polls answers the first poll's state for the rest of the download.
 //
 // # What is verified where
 //
@@ -237,6 +271,15 @@
 // window takes the process's main goroutine for app.Main and never gives it
 // back. Without a window server it reports that instead, and the test skips.
 //
+// The download is verified against the real service, where it has one. The
+// darwin test writes a file into iCloud Drive, waits for the service to take
+// it, evicts it with brctl so the machine holds no contents for it, asks for
+// it back and reads it — and it says which piece of the machine is missing
+// rather than passing without it. The platform's refusal of a path outside
+// every file provider is held in a second test, on an ordinary temporary
+// file, which needs nothing of iCloud. Away from macOS the stub's test holds
+// that the answer comes back at once.
+//
 // The menu bar is the same shape of claim. A test binary has no
 // NSApplication and therefore no menu bar, so the tests cover the
 // declaration, the tag routing and the message stream, and prove the darwin
@@ -249,5 +292,6 @@
 // The macOS side is Objective-C reached through cgo. That is why this is a
 // nested module rather than part of the mvu root: the root stays cgo-free and
 // platform-neutral, and only applications that want native window chrome, file
-// drops or a menu bar take on this module's AppKit build path.
+// drops, a menu bar or a download out of the cloud take on this module's
+// AppKit build path.
 package desktop

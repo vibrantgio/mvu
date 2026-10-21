@@ -56,3 +56,18 @@ type FilesDropped struct {
 	Paths []string
 	Pos   image.Point
 }
+
+// Downloaded reports the end of a download [Download] asked the platform
+// for: the path the download was asked for, and why the file is not there
+// when it is not. An empty Err is the file standing at that path with its
+// contents behind it, ready to be read.
+//
+// Exactly one of these answers every Download, whatever happened — a
+// refusal from the platform, an error it recorded against the item, a
+// download that ran past the command's own bound, or the file arriving.
+// A caller that showed a waiting state when it asked always has the
+// message that takes it down.
+type Downloaded struct {
+	Path string
+	Err  string
+}
