@@ -10,7 +10,7 @@ It wraps Gio's window/event loop in a lightweight runtime that lets you describe
 - a **view function**: a Gio component derived from the current model, and
 - **commands**: asynchronous or deferred work that can emit more messages.
 
-The library is intentionally minimal. It does not prescribe a widget toolkit, styling system, or message hierarchy. A message is simply `any`, a view is a standard `layout.Widget`, and rendered layers are reactive `rx.Observable[layout.Widget]` values.
+The library is intentionally minimal. It does not prescribe a component toolkit, styling system, or message hierarchy. A message is simply `any`, a view is a standard `layout.Widget`, and rendered layers are reactive `rx.Observable[layout.Widget]` values.
 
 ## Why use it?
 
@@ -286,7 +286,7 @@ func Loop[Model any](messages rx.Observable[Message],
 ```
 
 - `Run` starts the MVU loop on a window and renders the view mapped over the models after any additional layers. Additional layers are useful for persistent backgrounds, overlays, animations, or debug UI that are driven by independent observables.
-- `Loop` is the message/command loop alone, for apps that own their rendering — e.g. a theme window whose `Render` takes a theme-fed layer builder. It returns the models observable — a replay-latest multicast, so any number of consumers may subscribe at any time and each observes the model in force, with no consumer count to keep — and the command runner subscription (`defer func() { runner.Unsubscribe(); runner.Wait() }()`). Commands returned by `update` — including long-running streams — emit messages that feed back into the loop; a command error is contained to that command.
+- `Loop` is the message/command loop alone, for apps that own their rendering. It returns the models observable — a replay-latest multicast, so any number of consumers may subscribe at any time and each observes the model in force, with no consumer count to keep — and the command runner subscription (`defer func() { runner.Unsubscribe(); runner.Wait() }()`). Commands returned by `update` — including long-running streams — emit messages that feed back into the loop; a command error is contained to that command.
 
 ### `Window`
 
@@ -319,7 +319,7 @@ moment it subscribes, then follows.
 send, obs := stream.Value(preferences.Default)
 ```
 
-Reach for it when a slow-changing value is watched by several places —
+Use it when a slow-changing value is watched by several places —
 persisted preferences, the OS theme — and never for events, because it
 conflates: a consumer that falls behind converges on the newest value instead
 of replaying the ones it missed. Events belong in the message loop.
@@ -331,6 +331,36 @@ the producer forever. `stream.Value` composes `rx.Behavior` instead, whose
 subscriber set is a map and whose write never blocks. One arrival cycle costs
 1.3 µs against a bare Subject's 51.8 µs on an M1 Max, and an idle stream costs
 no goroutine at all.
+
+### `desktop`
+
+`mvu/desktop` is a nested module, `github.com/vibrantgio/mvu/desktop`, that
+adjusts the native window Gio creates for a `Window`, in place. Every entry
+point compiles on every platform and has no native effect away from macOS,
+where `Download` answers that nothing is in the cloud and `ScrollBars`
+reports `ScrollBarsWhenScrolling`; the macOS side is Objective-C reached
+through cgo.
+
+- Window chrome: `FullSizeContent` extends the content behind a transparent
+  title bar and `ShowWindowButtons` shows the three standard window buttons
+  over it; `PlaceWindowButtons` and `PlaceWindowButtonsAt` put the buttons on
+  a line the application picks. `TopInset` and `LeadingInset` measure the
+  title-bar strip and the run the buttons take; `ButtonRunIn`, `ButtonRunAt`,
+  `BandLead`, `InsetTop` and `CapTop` are the geometry of a row drawn at the
+  top of the window; `DragBand`, `DragRun` and `DragTop` let the window be
+  dragged by a part of that row.
+- `Close` closes the window and ends its run.
+- File drops: a `ZoneGroup` records the drop zones during layout, and a
+  `DropTarget` from `NewDropTarget` delivers `FilesEntered`, `FilesExited` and
+  `FilesDropped` messages resolved against them.
+- The menu bar: `NewMenuBar` adds `MenuItem` values to the application's menu
+  bar, and choosing an item posts its message.
+- `Download` is a command that asks the platform for the contents of a file
+  it keeps in the cloud and answers one `Downloaded` message.
+- `ScrollBars` reports the system's scroll bar setting.
+
+The package documentation in `desktop/doc.go` has the threading and lifecycle
+rules of the native half.
 
 ## Examples
 
