@@ -289,9 +289,8 @@
 //
 // # cgo
 //
-// The macOS side is Objective-C reached through cgo. That is why this is a
-// nested module rather than part of the mvu root: the root stays cgo-free and
-// platform-neutral, and only applications that want native window chrome, file
-// drops, a menu bar or a download out of the cloud take on this module's
-// AppKit build path.
+// The macOS side is Objective-C reached through cgo. This is a nested
+// module rather than part of the mvu root so that the root does not depend on
+// it: only applications that want native window chrome, file drops, a menu
+// bar or a download out of the cloud require this module.
 package desktop
