@@ -49,7 +49,8 @@ import (
 // inset: the wrapper is an exact no-op and w is laid out in the context it was
 // handed.
 //
-// The inset moves the available room up by the height, as [InsetTop] states.
+// The room stays the whole window; the inset moves w's origin down by the
+// height, and [InsetTop] states the room in w's own coordinates.
 // A window sets the room above the cap and makes no correction for the strip.
 //
 // This is the plain shape only. A window whose own regions stand in the strip

@@ -155,9 +155,9 @@ func BandLeadFrom(buttonsEnd, gap, gutter unit.Dp) unit.Dp {
 // layer that fills what it is given ends flush with the bottom of the window
 // instead of overhanging it by the inset.
 //
-// The available room the context holds moves up by the inset, with
-// [AvailableRoomAt], so a floating surface in w is placed in the window's
-// content area and not one inset lower.
+// The available room stays the whole window. The inset moves w's origin
+// down, so [AvailableRoomAt] states the room in w's own coordinates and a
+// floating surface in w is placed against the window, not one inset lower.
 func InsetTop(height func() unit.Dp, w layout.Widget) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
 		inset := gtx.Dp(height())
