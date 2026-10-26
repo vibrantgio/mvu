@@ -41,12 +41,13 @@ func Edit() {
 
 func Input(ax, ay float32, initial string, textColor, selectColor, backColor color.Color) rx.Observable[layout.Widget] {
 	// The theme's Typography supplies both the shaper (Roboto, system fonts
-	// excluded) and the editor's type role; BodyLarge is the 16 sp body role.
+	// excluded) and the editor's type role. SystemFont is the role for a
+	// text field's text.
 	typ := tokens.DefaultTypography
 	shaper := typ.Shaper()
-	editFont := font.Font{Typeface: font.Typeface(typ.BodyLarge.Typeface)}
-	if typ.BodyLarge.Weight != 0 {
-		editFont.Weight = tokens.FontWeight(typ.BodyLarge.Weight)
+	editFont := font.Font{Typeface: font.Typeface(typ.SystemFont.Typeface)}
+	if typ.SystemFont.Weight != 0 {
+		editFont.Weight = tokens.FontWeight(typ.SystemFont.Weight)
 	}
 	return rx.Defer(func() rx.Observable[layout.Widget] {
 		edit := widget.Editor{}
@@ -74,7 +75,7 @@ func Input(ax, ay float32, initial string, textColor, selectColor, backColor col
 			paint.ColorOp{Color: c}.Add(gtx.Ops)
 			selectMaterial := m.Stop()
 
-			edit.Layout(gtx, shaper, editFont, unit.Sp(typ.BodyLarge.Size), textMaterial, selectMaterial)
+			edit.Layout(gtx, shaper, editFont, unit.Sp(typ.SystemFont.Size), textMaterial, selectMaterial)
 
 			return layout.Dimensions{Size: size}
 		})

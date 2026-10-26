@@ -25,7 +25,7 @@ func Hello() {
 	window := mvu.NewWindow(app.Title("MVU - Hello"))
 	backdrop := rx.Of(backdrop.Widget(colornames.Grey600))
 	typ := tokens.DefaultTypography
-	content := rx.Of(textdraw.Text(typ.Shaper(), textStyle(typ.DisplayLarge), 0.5, 0.5, colornames.LightBlue100, "Hello, World!"))
+	content := rx.Of(textdraw.Text(typ.Shaper(), textStyle(typ.LargeTitle), 0.5, 0.5, colornames.LightBlue100, "Hello, World!"))
 	window.Render(backdrop, content).Wait()
 	os.Exit(0)
 }

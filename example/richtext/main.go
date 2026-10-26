@@ -38,7 +38,7 @@ func Content() layout.Widget {
 	// The theme's Typography supplies the shaper and the typeface: the spans
 	// name Roboto by face and keep their own per-span sizes.
 	typ := tokens.DefaultTypography
-	roboto := font.Font{Typeface: font.Typeface(typ.BodyLarge.Typeface)}
+	roboto := font.Font{Typeface: font.Typeface(typ.Body.Typeface)}
 
 	// define the text that you want to present. This can be persisted
 	// across frames, recomputed every frame, or modified in any way between
