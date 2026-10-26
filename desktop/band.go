@@ -154,6 +154,10 @@ func BandLeadFrom(buttonsEnd, gap, gutter unit.Dp) unit.Dp {
 // and their minimum follows the maximum down rather than exceeding it, so a
 // layer that fills what it is given ends flush with the bottom of the window
 // instead of overhanging it by the inset.
+//
+// The available room the context holds moves up by the inset, with
+// [AvailableRoomAt], so a floating surface in w is placed in the window's
+// content area and not one inset lower.
 func InsetTop(height func() unit.Dp, w layout.Widget) layout.Widget {
 	return func(gtx layout.Context) layout.Dimensions {
 		inset := gtx.Dp(height())
@@ -162,6 +166,7 @@ func InsetTop(height func() unit.Dp, w layout.Widget) layout.Widget {
 		}
 		size := gtx.Constraints.Max
 		defer op.Offset(image.Pt(0, inset)).Push(gtx.Ops).Pop()
+		gtx = AvailableRoomAt(gtx, image.Pt(0, inset))
 		gtx.Constraints.Max.Y -= inset
 		if gtx.Constraints.Min.Y > gtx.Constraints.Max.Y {
 			gtx.Constraints.Min.Y = gtx.Constraints.Max.Y
