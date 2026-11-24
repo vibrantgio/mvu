@@ -41,3 +41,39 @@ func TestTheDarwinMenuPathIsSafeWithoutAnApplication(t *testing.T) {
 	default:
 	}
 }
+
+// The declaration's native copy follows Set: the title and the disabled
+// state that validateMenuItem: gives the bar are the ones Set gave last. A
+// bar that a later bar superseded has no native items, so its Set changes
+// nothing there.
+func TestTheNativeDeclarationFollowsSet(t *testing.T) {
+	m := NewMenuBar(testWindow(t),
+		MenuItem{Menu: "Edit", Title: "Undo", Key: "z", Disabled: true, Msg: menuNew{}},
+		MenuItem{Menu: "Edit", Title: "Redo", Key: "Z", Msg: menuSettings{}},
+	)
+	check := func(i int, title string, disabled bool) {
+		t.Helper()
+		got, d, ok := nativeItem(m.tags[i])
+		if !ok {
+			t.Fatalf("the native declaration holds no item %d", i)
+		}
+		if got != title || d != disabled {
+			t.Fatalf("native item %d is %q disabled=%v, want %q disabled=%v", i, got, d, title, disabled)
+		}
+	}
+	check(0, "Undo", true)
+	check(1, "Redo", false)
+	m.Set(0, "Undo Delete Card", false)
+	m.Set(1, "Redo", true)
+	check(0, "Undo Delete Card", false)
+	check(1, "Redo", true)
+
+	next := NewMenuBar(testWindow(t), MenuItem{Menu: "Edit", Title: "Undo", Msg: menuNew{}})
+	m.Set(0, "Undo Add Card", false)
+	if _, _, ok := nativeItem(m.tags[0]); ok {
+		t.Fatal("the superseded bar's item is still in the native declaration")
+	}
+	if got, _, _ := nativeItem(next.tags[0]); got != "Undo" {
+		t.Fatalf("the superseded bar's Set changed the next bar's item to %q", got)
+	}
+}

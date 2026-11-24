@@ -166,3 +166,48 @@ func TestApplicationMenuIsTheUntitledMenu(t *testing.T) {
 		t.Fatalf("ApplicationMenu = %q, want the empty title", ApplicationMenu)
 	}
 }
+
+// Set changes the item's title and disabled state, item by item, and a
+// declared Disabled item starts disabled. The bar keeps the state of the
+// items that Set did not name.
+func TestSetChangesTheItemsTitleAndState(t *testing.T) {
+	m := NewMenuBar(testWindow(t),
+		MenuItem{Menu: "Edit", Title: "Undo", Disabled: true, Msg: menuNew{}},
+		MenuItem{Menu: "Edit", Title: "Redo", Disabled: true, Msg: menuSettings{}},
+	)
+	if !m.items[0].Disabled || !m.items[1].Disabled {
+		t.Fatal("the declared Disabled items do not start disabled")
+	}
+	m.Set(0, "Undo Delete Card", false)
+	if got := m.items[0]; got.Title != "Undo Delete Card" || got.Disabled {
+		t.Fatalf("item 0 is %q disabled=%v, want \"Undo Delete Card\" enabled", got.Title, got.Disabled)
+	}
+	if got := m.items[1]; got.Title != "Redo" || !got.Disabled {
+		t.Fatalf("item 1 is %q disabled=%v, want \"Redo\" disabled as declared", got.Title, got.Disabled)
+	}
+	m.Set(0, "Undo", true)
+	if got := m.items[0]; got.Title != "Undo" || !got.Disabled {
+		t.Fatalf("item 0 is %q disabled=%v, want \"Undo\" disabled", got.Title, got.Disabled)
+	}
+	// The item's message stays its own after Set.
+	chooseMenuTag(m.tags[0])
+	select {
+	case got := <-m.msgs:
+		if _, ok := got.(menuNew); !ok {
+			t.Fatalf("item 0 posted %T after Set, want desktop.menuNew", got)
+		}
+	default:
+		t.Fatal("item 0 posted nothing after Set")
+	}
+}
+
+// An empty title is a bug in Set as it is in the declaration.
+func TestSetWithAnEmptyTitlePanics(t *testing.T) {
+	m := NewMenuBar(testWindow(t), MenuItem{Title: "Undo", Msg: menuNew{}})
+	defer func() {
+		if recover() == nil {
+			t.Fatal("Set with an empty title did not panic")
+		}
+	}()
+	m.Set(0, "", false)
+}

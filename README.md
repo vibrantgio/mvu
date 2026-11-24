@@ -354,7 +354,8 @@ through cgo.
   `DropTarget` from `NewDropTarget` delivers `FilesEntered`, `FilesExited` and
   `FilesDropped` messages resolved against them.
 - The menu bar: `NewMenuBar` adds `MenuItem` values to the application's menu
-  bar, and choosing an item posts its message.
+  bar, and choosing an item posts its message. `MenuBar.Set` changes an
+  item's title and disabled state.
 - `Download` is a command that asks the platform for the contents of a file
   it keeps in the cloud and answers one `Downloaded` message.
 - `ScrollBars` reports the system's scroll bar setting.

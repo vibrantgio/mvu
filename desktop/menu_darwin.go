@@ -51,7 +51,36 @@ func (m *MenuBar) declare(it MenuItem, tag int) {
 	defer C.free(unsafe.Pointer(menu))
 	defer C.free(unsafe.Pointer(title))
 	defer C.free(unsafe.Pointer(key))
-	C.vgio_menu_declare(menu, title, key, C.int(tag))
+	C.vgio_menu_declare(menu, title, key, C.int(tag), cbool(it.Disabled))
+}
+
+// show gives the declared item with tag its new title and disabled state.
+// The native side copies the title, and the bar reads the state when it
+// validates the item.
+func (m *MenuBar) show(tag int, title string, disabled bool) {
+	t := C.CString(title)
+	defer C.free(unsafe.Pointer(t))
+	C.vgio_menu_set(C.int(tag), t, cbool(disabled))
+}
+
+// nativeItem is the native declaration's state for the item with tag: its
+// title and its disabled state. ok is false when the native declaration
+// holds no item with tag.
+func nativeItem(tag int) (title string, disabled, ok bool) {
+	var d C.int
+	t := C.vgio_menu_lookup(C.int(tag), &d)
+	if t == nil {
+		return "", false, false
+	}
+	defer C.free(unsafe.Pointer(t))
+	return C.GoString(t), d != 0, true
+}
+
+func cbool(b bool) C.int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // vgioMenuChosen is called from the menu target's action method on the AppKit

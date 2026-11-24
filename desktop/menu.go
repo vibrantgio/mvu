@@ -36,8 +36,9 @@ type MenuItem struct {
 	// [ApplicationMenu], the empty title, is the application's own menu.
 	Menu string
 
-	// Title is the item's own text, shown as written. It is required: an
-	// item with no title is a bug, not a separator.
+	// Title is the item's own text, shown as written until [MenuBar.Set]
+	// gives the item another title. It is required: an item with no title
+	// is a bug, not a separator.
 	Title string
 
 	// Key is the item's key equivalent — one character, with this platform's
@@ -51,6 +52,11 @@ type MenuItem struct {
 	// survive a platform whose bar this package does not amend — they post
 	// the same message, and exactly one of them posts it.
 	Key string
+
+	// Disabled shows the item greyed out, and a person cannot choose it.
+	// [MenuBar.Set] changes it, so an item can follow the application's
+	// model, as Undo is disabled when there is nothing to undo.
+	Disabled bool
 
 	// Msg is the message posted when the item is chosen. The same value is
 	// posted on every choice, so it is a value the application's update
@@ -156,6 +162,31 @@ func NewMenuBar(w *mvu.Window, items ...MenuItem) *MenuBar {
 // has one.
 func (m *MenuBar) Messages() rx.Observable[mvu.Message] {
 	return rx.Recv(m.msgs)
+}
+
+// Set gives item i of the bar, in declaration order, the title title and
+// the disabled state disabled. The application calls it when its model
+// changes what the item says, as "Undo Delete Card" follows the last
+// change. A call that changes nothing crosses to no native code, so the
+// caller can call Set for each model. An empty title panics, as it does in
+// [NewMenuBar].
+//
+// The bar shows the new state the next time the platform validates the
+// item: when a person opens the item's menu, or presses its key
+// equivalent. Set itself never waits for the platform's UI thread. Set on
+// a bar that a later [NewMenuBar] superseded changes nothing in the bar.
+func (m *MenuBar) Set(i int, title string, disabled bool) {
+	if title == "" {
+		panic("desktop: MenuBar.Set needs a title (an item with no title is a bug, not a separator)")
+	}
+	menuMu.Lock()
+	defer menuMu.Unlock()
+	it := &m.items[i]
+	if it.Title == title && it.Disabled == disabled {
+		return
+	}
+	it.Title, it.Disabled = title, disabled
+	m.show(m.tags[i], title, disabled)
 }
 
 // post hands one chosen item's message to the subscriber without ever

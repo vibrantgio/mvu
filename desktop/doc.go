@@ -181,6 +181,12 @@
 // it, created on the item that first names it and filled in declaration
 // order.
 //
+// [MenuBar.Set] gives an item a new title and disabled state, so an item can
+// follow the application's model, as "Undo Delete Card" names the last
+// change and Undo is disabled when there is nothing to undo. The bar reads
+// the state when the platform validates the item: when its menu opens, and
+// when its key equivalent is pressed.
+//
 // The bar is the application's, not the window's: macOS draws one bar per
 // process whatever it has open, so a MenuBar is a process-wide declaration
 // that takes a window only to learn when there is an application to amend.

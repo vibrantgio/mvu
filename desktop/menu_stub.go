@@ -10,3 +10,6 @@ package desktop
 // carry the actions here.
 
 func (m *MenuBar) install() {}
+
+// show has no bar to change. [MenuBar.Set] keeps the item's state in Go.
+func (m *MenuBar) show(tag int, title string, disabled bool) {}

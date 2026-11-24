@@ -18,29 +18,38 @@
 
 #import <AppKit/AppKit.h>
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "menu_darwin.h"
 
 // The Go-exported handler (menu_darwin.go). tag identifies the chosen item.
 extern void vgioMenuChosen(int tag);
 
 // One declared item. Immutable once made, so the main thread may read it
-// while the declaring goroutine holds the lock over the array alone.
+// while the declaring goroutine holds the lock over the array alone. A new
+// title or disabled state replaces the object in the array.
 @interface VGioMenuDecl : NSObject
 @property(nonatomic, copy) NSString *menu;
 @property(nonatomic, copy) NSString *title;
 @property(nonatomic, copy) NSString *key;
 @property(nonatomic, assign) int itemTag;
+@property(nonatomic, assign) BOOL disabled;
 @end
 
 @implementation VGioMenuDecl
 @end
 
+// The declared item with tag, or nil. Any thread.
+static VGioMenuDecl *vgio_menu_decl_for(int tag);
+
 // The target every added item points at. An item whose target is nil is
 // offered to the responder chain and disabled when nobody answers; naming a
 // target that answers the selector is what keeps these items live regardless
-// of what has focus. validateMenuItem: says so explicitly rather than leaving
-// it to AppKit's automatic enabling — a message an application declared is
-// always sendable.
+// of what has focus. validateMenuItem: gives the item its declared title
+// and enables it unless the declaration disables it. AppKit calls it on the
+// main thread when the item's menu opens and when its key equivalent is
+// pressed, so a new state reaches the bar with no dispatch of its own.
 @interface VGioMenuTarget : NSObject
 - (void)vgioMenuChosen:(id)sender;
 @end
@@ -52,7 +61,14 @@ extern void vgioMenuChosen(int tag);
 	}
 }
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
-	return YES;
+	VGioMenuDecl *d = vgio_menu_decl_for((int)[item tag]);
+	if (d == nil) {
+		return YES;
+	}
+	if (![[item title] isEqualToString:d.title]) {
+		[item setTitle:d.title];
+	}
+	return !d.disabled;
 }
 @end
 
@@ -87,17 +103,65 @@ void vgio_menu_reset(void) {
 	}
 }
 
-void vgio_menu_declare(const char *menu, const char *title, const char *key, int tag) {
+void vgio_menu_declare(const char *menu, const char *title, const char *key, int tag, int disabled) {
 	@autoreleasepool {
 		VGioMenuDecl *d = [VGioMenuDecl new];
 		d.menu = menu != NULL ? @(menu) : @"";
 		d.title = title != NULL ? @(title) : @"";
 		d.key = key != NULL ? @(key) : @"";
 		d.itemTag = tag;
+		d.disabled = disabled != 0;
 		NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
 		@synchronized(decls) {
 			[decls addObject:d];
 		}
+	}
+}
+
+static VGioMenuDecl *vgio_menu_decl_for(int tag) {
+	NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
+	@synchronized(decls) {
+		for (VGioMenuDecl *d in decls) {
+			if (d.itemTag == tag) {
+				return d;
+			}
+		}
+	}
+	return nil;
+}
+
+void vgio_menu_set(int tag, const char *title, int disabled) {
+	@autoreleasepool {
+		NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
+		@synchronized(decls) {
+			for (NSUInteger i = 0; i < [decls count]; i++) {
+				VGioMenuDecl *old = decls[i];
+				if (old.itemTag != tag) {
+					continue;
+				}
+				VGioMenuDecl *d = [VGioMenuDecl new];
+				d.menu = old.menu;
+				d.title = title != NULL ? @(title) : @"";
+				d.key = old.key;
+				d.itemTag = tag;
+				d.disabled = disabled != 0;
+				decls[i] = d;
+				return;
+			}
+		}
+	}
+}
+
+char *vgio_menu_lookup(int tag, int *disabled) {
+	@autoreleasepool {
+		VGioMenuDecl *d = vgio_menu_decl_for(tag);
+		if (d == nil) {
+			return NULL;
+		}
+		if (disabled != NULL) {
+			*disabled = d.disabled ? 1 : 0;
+		}
+		return strdup([d.title UTF8String]);
 	}
 }
 
@@ -174,6 +238,7 @@ static void vgio_menu_apply_main(void) {
 		                                              action:@selector(vgioMenuChosen:)
 		                                       keyEquivalent:d.key];
 		[item setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+		[item setEnabled:!d.disabled];
 		[item setTarget:vgio_menu_target];
 		[item setTag:d.itemTag];
 		if ([d.menu length] == 0) {
