@@ -166,8 +166,8 @@
 // in its own darwin glue, before the run loop starts, and offers no way to
 // add to it. NSApp's main menu is an ordinary mutable menu all the same, so
 // [NewMenuBar] amends it in place: [MenuItem] values declare a menu, a title,
-// a one-character chord with the command modifier implied, and the message
-// choosing the item posts.
+// a one-character chord with the command modifier implied (an uppercase
+// letter adds Shift), and the message choosing the item posts.
 //
 //	menu := desktop.NewMenuBar(w,
 //		desktop.MenuItem{Menu: "File", Title: "New Note", Key: "n", Msg: NewNote{}},
@@ -187,14 +187,19 @@
 // the state when the platform validates the item: when its menu opens, and
 // when its key equivalent is pressed.
 //
+// A menu that [NewMenuBar] creates answers its key equivalents from the
+// declaration. An enabled item takes its key. A disabled item does not, and
+// the key goes to the window. So an application disables Undo while a text
+// field holds the keyboard, and the field gets Cmd-Z for its own text.
+//
 // The bar is the application's, not the window's: macOS draws one bar per
 // process whatever it has open, so a MenuBar is a process-wide declaration
 // that takes a window only to learn when there is an application to amend.
 // Declaring a second bar supersedes the first.
 //
-// An item's chord and an in-window accelerator on the same chord do not both
-// fire — the menu bar answers a key equivalent before the key reaches the
-// window — so declaring both is right rather than redundant: away from macOS
+// An enabled item's chord and an in-window accelerator on the same chord do
+// not both fire — the menu bar answers a key equivalent before the key
+// reaches the window — so declaring both is right rather than redundant: away from macOS
 // the declaration is inert and the in-window chord is what carries the
 // action.
 //

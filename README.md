@@ -355,7 +355,8 @@ through cgo.
   `FilesDropped` messages resolved against them.
 - The menu bar: `NewMenuBar` adds `MenuItem` values to the application's menu
   bar, and choosing an item posts its message. `MenuBar.Set` changes an
-  item's title and disabled state.
+  item's title and disabled state. A disabled item in a menu that the bar
+  creates gives its key equivalent to the window.
 - `Download` is a command that asks the platform for the contents of a file
   it keeps in the cloud and answers one `Downloaded` message.
 - `ScrollBars` reports the system's scroll bar setting.

@@ -14,7 +14,7 @@ extern void vgio_menu_reset(void);
 // vgio_menu_declare appends one item to the declaration: menu is the title of
 // the menu it sits in, or "" for the application's own menu; title is the
 // item's label; key is its key equivalent, "" for none, with the command
-// modifier implied; tag is the integer the choice is reported back under.
+// modifier implied and Shift for an uppercase letter; tag is the integer the choice is reported back under.
 // disabled is 1 for an item that a person cannot choose. The strings are
 // copied.
 extern void vgio_menu_declare(const char *menu, const char *title, const char *key, int tag, int disabled);
@@ -29,6 +29,12 @@ extern void vgio_menu_set(int tag, const char *title, int disabled);
 // the caller frees, and its disabled state in *disabled. It gives NULL when
 // the declaration holds no item with tag.
 extern char *vgio_menu_lookup(int tag, int *disabled);
+
+// vgio_menu_key_tag gives the tag of the enabled item in the menu titled
+// menu whose key equivalent the characters chars press, with Shift held
+// when shift is 1. It gives 0 when no enabled item matches. A menu that
+// this package creates answers its key equivalents with it.
+extern int vgio_menu_key_tag(const char *menu, const char *chars, int shift);
 
 // vgio_menu_apply makes the bar match the declaration, on the AppKit main
 // thread: every item this package added before is removed, and the current

@@ -43,6 +43,23 @@ extern void vgioMenuChosen(int tag);
 // The declared item with tag, or nil. Any thread.
 static VGioMenuDecl *vgio_menu_decl_for(int tag);
 
+// The tag of the enabled item in the menu titled menu whose key equivalent
+// chars and shift press, or 0. Any thread.
+static int vgio_menu_key_tag_for(NSString *menu, NSString *chars, BOOL shift);
+
+// The target and action that a key equivalent of a declared item resolves
+// to. It carries the item's tag, so its action reads no sender.
+@interface VGioMenuKey : NSObject
+@property(nonatomic, assign) int itemTag;
+- (void)vgioMenuKey:(id)sender;
+@end
+
+@implementation VGioMenuKey
+- (void)vgioMenuKey:(id)sender {
+	vgioMenuChosen(self.itemTag);
+}
+@end
+
 // The target every added item points at. An item whose target is nil is
 // offered to the responder chain and disabled when nobody answers; naming a
 // target that answers the selector is what keeps these items live regardless
@@ -50,7 +67,13 @@ static VGioMenuDecl *vgio_menu_decl_for(int tag);
 // and enables it unless the declaration disables it. AppKit calls it on the
 // main thread when the item's menu opens and when its key equivalent is
 // pressed, so a new state reaches the bar with no dispatch of its own.
-@interface VGioMenuTarget : NSObject
+//
+// The target is also the delegate of each menu that this package creates.
+// menuHasKeyEquivalent: answers a key equivalent from the declaration: an
+// enabled item takes its key, and a disabled item does not. AppKit then
+// gives the key to the key window, so a disabled item never takes a key
+// that the window reads.
+@interface VGioMenuTarget : NSObject <NSMenuDelegate>
 - (void)vgioMenuChosen:(id)sender;
 @end
 
@@ -69,6 +92,27 @@ static VGioMenuDecl *vgio_menu_decl_for(int tag);
 		[item setTitle:d.title];
 	}
 	return !d.disabled;
+}
+- (BOOL)menuHasKeyEquivalent:(NSMenu *)menu
+                    forEvent:(NSEvent *)event
+                      target:(id _Nullable *)target
+                      action:(SEL _Nullable *)action {
+	NSEventModifierFlags flags = [event modifierFlags];
+	NSEventModifierFlags held = flags & (NSEventModifierFlagCommand | NSEventModifierFlagOption |
+	                                     NSEventModifierFlagControl);
+	if (held != NSEventModifierFlagCommand) {
+		return NO;
+	}
+	int tag = vgio_menu_key_tag_for([menu title], [event charactersIgnoringModifiers],
+	                                (flags & NSEventModifierFlagShift) != 0);
+	if (tag == 0) {
+		return NO;
+	}
+	VGioMenuKey *k = [VGioMenuKey new];
+	k.itemTag = tag;
+	*target = k;
+	*action = @selector(vgioMenuKey:);
+	return YES;
 }
 @end
 
@@ -152,6 +196,43 @@ void vgio_menu_set(int tag, const char *title, int disabled) {
 	}
 }
 
+// A key equivalent with a cased letter matches that letter, and an
+// uppercase letter needs Shift, as AppKit draws it. Any other key
+// equivalent matches the characters exactly.
+static int vgio_menu_key_tag_for(NSString *menu, NSString *chars, BOOL shift) {
+	if (menu == nil || chars == nil || [chars length] == 0) {
+		return 0;
+	}
+	NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
+	@synchronized(decls) {
+		for (VGioMenuDecl *d in decls) {
+			NSString *k = d.key;
+			if (d.disabled || [k length] == 0 || ![d.menu isEqualToString:menu]) {
+				continue;
+			}
+			NSString *lower = [k lowercaseString];
+			BOOL match;
+			if ([lower isEqualToString:[k uppercaseString]]) {
+				match = [k isEqualToString:chars];
+			} else {
+				match = [lower isEqualToString:[chars lowercaseString]] &&
+				        shift == ![k isEqualToString:lower];
+			}
+			if (match) {
+				return d.itemTag;
+			}
+		}
+	}
+	return 0;
+}
+
+int vgio_menu_key_tag(const char *menu, const char *chars, int shift) {
+	@autoreleasepool {
+		return vgio_menu_key_tag_for(menu != NULL ? @(menu) : @"", chars != NULL ? @(chars) : @"",
+		                             shift != 0);
+	}
+}
+
 char *vgio_menu_lookup(int tag, int *disabled) {
 	@autoreleasepool {
 		VGioMenuDecl *d = vgio_menu_decl_for(tag);
@@ -189,6 +270,7 @@ static NSMenu *vgio_menu_for(NSMenu *bar, NSString *title,
 	}
 	// The bar shows the SUBMENU's title, not the item's, so both are set.
 	menu = [[NSMenu alloc] initWithTitle:title];
+	[menu setDelegate:vgio_menu_target];
 	NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:NULL keyEquivalent:@""];
 	[item setSubmenu:menu];
 	[bar addItem:item];

@@ -42,15 +42,21 @@ type MenuItem struct {
 	Title string
 
 	// Key is the item's key equivalent — one character, with this platform's
-	// command modifier implied, so "n" is Cmd-N and "," is Cmd-comma. The
-	// empty string asks for no chord at all.
+	// command modifier implied, so "n" is Cmd-N and "," is Cmd-comma. An
+	// uppercase letter adds Shift, so "Z" is Shift-Cmd-Z. The empty string
+	// asks for no chord at all.
 	//
-	// A menu's key equivalent is answered by the menu bar before the key
-	// reaches the window, so an item and an in-window accelerator on the same
-	// chord do not both fire: the menu wins and the window's never sees it.
+	// An enabled item answers its key equivalent before the key reaches the
+	// window, so an item and an in-window accelerator on the same chord do
+	// not both fire: the menu wins and the window never sees the key.
 	// Declaring both is therefore the right thing to do when the action must
 	// survive a platform whose bar this package does not amend — they post
 	// the same message, and exactly one of them posts it.
+	//
+	// A disabled item in a menu that this package creates does not take its
+	// key equivalent: the key goes to the window. So a text field that holds
+	// the keyboard gets Cmd-Z while the application disables its Undo item.
+	// In [ApplicationMenu], the platform's own rules apply.
 	Key string
 
 	// Disabled shows the item greyed out, and a person cannot choose it.

@@ -77,3 +77,44 @@ func TestTheNativeDeclarationFollowsSet(t *testing.T) {
 		t.Fatalf("the superseded bar's Set changed the next bar's item to %q", got)
 	}
 }
+
+// menuKey is one key press on a menu, and the tag that the menu answers.
+type menuKey struct {
+	menu, chars string
+	shift       bool
+	want        int
+}
+
+// A menu that this package creates answers a key equivalent from the
+// declaration. An enabled item takes its key, with Shift for an uppercase
+// letter. A disabled item does not, so the key goes to the window.
+func TestADisabledItemGivesItsKeyToTheWindow(t *testing.T) {
+	m := NewMenuBar(testWindow(t),
+		MenuItem{Menu: "Edit", Title: "Undo", Key: "z", Disabled: true, Msg: menuNew{}},
+		MenuItem{Menu: "Edit", Title: "Redo", Key: "Z", Disabled: true, Msg: menuSettings{}},
+		MenuItem{Menu: "View", Title: "Toggle", Key: "\\", Msg: menuToggle{}},
+	)
+	check := func(keys []menuKey) {
+		t.Helper()
+		for _, k := range keys {
+			if got := nativeKeyTag(k.menu, k.chars, k.shift); got != k.want {
+				t.Errorf("%s %q shift=%v answers tag %d, want %d", k.menu, k.chars, k.shift, got, k.want)
+			}
+		}
+	}
+	check([]menuKey{
+		{"Edit", "z", false, 0},
+		{"Edit", "Z", true, 0},
+		{"View", "\\", false, m.tags[2]},
+		{"Edit", "\\", false, 0},
+	})
+	m.Set(0, "Undo Delete Card", false)
+	m.Set(1, "Redo Add Card", false)
+	check([]menuKey{
+		{"Edit", "z", false, m.tags[0]},
+		{"Edit", "Z", true, m.tags[1]},
+		{"Edit", "z", true, m.tags[1]},
+		{"Edit", "Z", false, m.tags[0]},
+		{"View", "z", false, 0},
+	})
+}
