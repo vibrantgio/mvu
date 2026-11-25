@@ -43,22 +43,9 @@ extern void vgioMenuChosen(int tag);
 // The declared item with tag, or nil. Any thread.
 static VGioMenuDecl *vgio_menu_decl_for(int tag);
 
-// The tag of the enabled item in the menu titled menu whose key equivalent
-// chars and shift press, or 0. Any thread.
-static int vgio_menu_key_tag_for(NSString *menu, NSString *chars, BOOL shift);
-
-// The target and action that a key equivalent of a declared item resolves
-// to. It carries the item's tag, so its action reads no sender.
-@interface VGioMenuKey : NSObject
-@property(nonatomic, assign) int itemTag;
-- (void)vgioMenuKey:(id)sender;
-@end
-
-@implementation VGioMenuKey
-- (void)vgioMenuKey:(id)sender {
-	vgioMenuChosen(self.itemTag);
-}
-@end
+// Gives each declared item of menu its key equivalent, or none for a
+// disabled item when forKey is YES. Main thread only.
+static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
 
 // The target every added item points at. An item whose target is nil is
 // offered to the responder chain and disabled when nobody answers; naming a
@@ -69,10 +56,14 @@ static int vgio_menu_key_tag_for(NSString *menu, NSString *chars, BOOL shift);
 // pressed, so a new state reaches the bar with no dispatch of its own.
 //
 // The target is also the delegate of each menu that this package creates.
-// menuHasKeyEquivalent: answers a key equivalent from the declaration: an
-// enabled item takes its key, and a disabled item does not. AppKit then
-// gives the key to the key window, so a disabled item never takes a key
-// that the window reads.
+// AppKit searches a menu's items for a key equivalent after its delegate's
+// menuHasKeyEquivalent: answers NO, and a disabled item takes a key that
+// it matches, with no action. A headless probe measured both on macOS 26.
+// So menuHasKeyEquivalent: takes the key equivalent from each disabled
+// item before the search, and answers NO. The search then finds no
+// disabled item, and AppKit gives the key to the key window.
+// menuNeedsUpdate: gives each item its key equivalent again before the
+// menu shows, so a disabled item shows its key.
 @interface VGioMenuTarget : NSObject <NSMenuDelegate>
 - (void)vgioMenuChosen:(id)sender;
 @end
@@ -97,22 +88,11 @@ static int vgio_menu_key_tag_for(NSString *menu, NSString *chars, BOOL shift);
                     forEvent:(NSEvent *)event
                       target:(id _Nullable *)target
                       action:(SEL _Nullable *)action {
-	NSEventModifierFlags flags = [event modifierFlags];
-	NSEventModifierFlags held = flags & (NSEventModifierFlagCommand | NSEventModifierFlagOption |
-	                                     NSEventModifierFlagControl);
-	if (held != NSEventModifierFlagCommand) {
-		return NO;
-	}
-	int tag = vgio_menu_key_tag_for([menu title], [event charactersIgnoringModifiers],
-	                                (flags & NSEventModifierFlagShift) != 0);
-	if (tag == 0) {
-		return NO;
-	}
-	VGioMenuKey *k = [VGioMenuKey new];
-	k.itemTag = tag;
-	*target = k;
-	*action = @selector(vgioMenuKey:);
-	return YES;
+	vgio_menu_sync_keys(menu, YES);
+	return NO;
+}
+- (void)menuNeedsUpdate:(NSMenu *)menu {
+	vgio_menu_sync_keys(menu, NO);
 }
 @end
 
@@ -196,40 +176,67 @@ void vgio_menu_set(int tag, const char *title, int disabled) {
 	}
 }
 
-// A key equivalent with a cased letter matches that letter, and an
-// uppercase letter needs Shift, as AppKit draws it. Any other key
-// equivalent matches the characters exactly.
-static int vgio_menu_key_tag_for(NSString *menu, NSString *chars, BOOL shift) {
-	if (menu == nil || chars == nil || [chars length] == 0) {
-		return 0;
-	}
-	NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
-	@synchronized(decls) {
-		for (VGioMenuDecl *d in decls) {
-			NSString *k = d.key;
-			if (d.disabled || [k length] == 0 || ![d.menu isEqualToString:menu]) {
-				continue;
-			}
-			NSString *lower = [k lowercaseString];
-			BOOL match;
-			if ([lower isEqualToString:[k uppercaseString]]) {
-				match = [k isEqualToString:chars];
-			} else {
-				match = [lower isEqualToString:[chars lowercaseString]] &&
-				        shift == ![k isEqualToString:lower];
-			}
-			if (match) {
-				return d.itemTag;
-			}
+static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey) {
+	for (NSMenuItem *item in [menu itemArray]) {
+		VGioMenuDecl *d = vgio_menu_decl_for((int)[item tag]);
+		if (d == nil) {
+			continue;
+		}
+		NSString *key = forKey && d.disabled ? @"" : d.key;
+		if (![[item keyEquivalent] isEqualToString:key]) {
+			[item setKeyEquivalent:key];
 		}
 	}
-	return 0;
 }
 
-int vgio_menu_key_tag(const char *menu, const char *chars, int shift) {
+// The menu item that shows declaration d and posts its choice to target.
+static NSMenuItem *vgio_menu_item(VGioMenuDecl *d, VGioMenuTarget *target) {
+	NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:d.title
+	                                              action:@selector(vgioMenuChosen:)
+	                                       keyEquivalent:d.key];
+	[item setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+	[item setEnabled:!d.disabled];
+	[item setTarget:target];
+	[item setTag:d.itemTag];
+	return item;
+}
+
+int vgio_menu_takes_key(const char *menu, const char *chars, int shift) {
 	@autoreleasepool {
-		return vgio_menu_key_tag_for(menu != NULL ? @(menu) : @"", chars != NULL ? @(chars) : @"",
-		                             shift != 0);
+		NSString *title = menu != NULL ? @(menu) : @"";
+		NSString *ignoring = chars != NULL ? @(chars) : @"";
+		VGioMenuTarget *target = [VGioMenuTarget new];
+		NSMenu *bar = [[NSMenu alloc] initWithTitle:@""];
+		NSMenu *sub = [[NSMenu alloc] initWithTitle:title];
+		[sub setDelegate:target];
+		NSMenuItem *top = [[NSMenuItem alloc] initWithTitle:title action:NULL keyEquivalent:@""];
+		[top setSubmenu:sub];
+		[bar addItem:top];
+		NSArray<VGioMenuDecl *> *decls = nil;
+		NSMutableArray<VGioMenuDecl *> *live = vgio_menu_declarations();
+		@synchronized(live) {
+			decls = [live copy];
+		}
+		for (VGioMenuDecl *d in decls) {
+			if ([d.menu isEqualToString:title]) {
+				[sub addItem:vgio_menu_item(d, target)];
+			}
+		}
+		NSEventModifierFlags flags = NSEventModifierFlagCommand;
+		if (shift != 0) {
+			flags |= NSEventModifierFlagShift;
+		}
+		NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown
+		                                  location:NSZeroPoint
+		                             modifierFlags:flags
+		                                 timestamp:0
+		                              windowNumber:0
+		                                   context:nil
+		                                characters:[ignoring lowercaseString]
+		                   charactersIgnoringModifiers:ignoring
+		                                 isARepeat:NO
+		                                   keyCode:0];
+		return [bar performKeyEquivalent:event] ? 1 : 0;
 	}
 }
 
@@ -316,13 +323,7 @@ static void vgio_menu_apply_main(void) {
 		if (menu == nil) {
 			continue;
 		}
-		NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:d.title
-		                                              action:@selector(vgioMenuChosen:)
-		                                       keyEquivalent:d.key];
-		[item setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
-		[item setEnabled:!d.disabled];
-		[item setTarget:vgio_menu_target];
-		[item setTag:d.itemTag];
+		NSMenuItem *item = vgio_menu_item(d, vgio_menu_target);
 		if ([d.menu length] == 0) {
 			[menu insertItem:item atIndex:appIndex++];
 		} else {

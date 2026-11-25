@@ -30,11 +30,12 @@ extern void vgio_menu_set(int tag, const char *title, int disabled);
 // the declaration holds no item with tag.
 extern char *vgio_menu_lookup(int tag, int *disabled);
 
-// vgio_menu_key_tag gives the tag of the enabled item in the menu titled
-// menu whose key equivalent the characters chars press, with Shift held
-// when shift is 1. It gives 0 when no enabled item matches. A menu that
-// this package creates answers its key equivalents with it.
-extern int vgio_menu_key_tag(const char *menu, const char *chars, int shift);
+// vgio_menu_takes_key builds a menu bar with one menu titled menu, which
+// holds the declared items of that menu, and presses one key equivalent
+// on it: the characters chars with Command, and with Shift when shift is
+// 1. It gives 1 when the bar takes the key, and 0 when the key goes on to
+// the window. It needs no application, and no action runs.
+extern int vgio_menu_takes_key(const char *menu, const char *chars, int shift);
 
 // vgio_menu_apply makes the bar match the declaration, on the AppKit main
 // thread: every item this package added before is removed, and the current

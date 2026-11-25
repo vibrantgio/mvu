@@ -76,16 +76,16 @@ func nativeItem(tag int) (title string, disabled, ok bool) {
 	return C.GoString(t), d != 0, true
 }
 
-// nativeKeyTag is the tag of the enabled item in the menu titled menu whose
-// key equivalent chars press, with Shift held when shift is true, as a
-// menu that this package creates answers the key. It is 0 when no enabled
-// item matches, and the key then goes to the window.
-func nativeKeyTag(menu, chars string, shift bool) int {
+// nativeTakesKey reports whether a menu bar that holds the declared items
+// of the menu titled menu takes the key equivalent chars, with Command and
+// with Shift when shift is true. A key that the bar does not take goes on
+// to the window.
+func nativeTakesKey(menu, chars string, shift bool) bool {
 	m := C.CString(menu)
 	c := C.CString(chars)
 	defer C.free(unsafe.Pointer(m))
 	defer C.free(unsafe.Pointer(c))
-	return int(C.vgio_menu_key_tag(m, c, cbool(shift)))
+	return C.vgio_menu_takes_key(m, c, cbool(shift)) != 0
 }
 
 func cbool(b bool) C.int {
