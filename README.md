@@ -355,7 +355,10 @@ through cgo.
   `FilesDropped` messages resolved against them.
 - The menu bar: `NewMenuBar` adds `MenuItem` values to the application's menu
   bar, and choosing an item posts its message. `MenuBar.Set` changes an
-  item's title and disabled state. A disabled item in a menu that the bar
+  item's title and disabled state. A key equivalent can add Control, and
+  `UpArrow` and `DownArrow` are the arrow keys. A submenu item holds a
+  submenu of items, and `MenuBar.SetItems` replaces those items while the
+  application runs. A disabled item in a menu or a submenu that the bar
   creates gives its key equivalent to the window.
 - `Download` is a command that asks the platform for the contents of a file
   it keeps in the cloud and answers one `Downloaded` message.

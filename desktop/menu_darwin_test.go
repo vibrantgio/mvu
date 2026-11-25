@@ -3,6 +3,7 @@
 package desktop
 
 import (
+	"strings"
 	"testing"
 
 	"gioui.org/app"
@@ -118,4 +119,74 @@ func TestADisabledItemGivesItsKeyToTheWindow(t *testing.T) {
 		{"Edit", "z", false, false},
 		{"Edit", "Z", true, true},
 	})
+}
+
+// The board's Card menu, as the Notes and Reminders menu files measure it:
+// "Move Item" with Up on Ctrl-Cmd-Up and Down on Ctrl-Cmd-Down, and "Move to
+// Column" with no key, filled while the application runs.
+func cardMenu(t *testing.T) *MenuBar {
+	return NewMenuBar(testWindow(t),
+		MenuItem{Menu: "Card", Title: "Move Item", Submenu: true, Items: moveItems(false, true)},
+		MenuItem{Menu: "Card", Title: "Move to Column", Submenu: true},
+	)
+}
+
+// moveItems is the items of "Move Item", with Up and Down disabled as asked.
+func moveItems(upOff, downOff bool) []MenuItem {
+	return []MenuItem{
+		{Title: "Up", Key: UpArrow, Control: true, Disabled: upOff, Msg: menuNew{}},
+		{Title: "Down", Key: DownArrow, Control: true, Disabled: downOff, Msg: menuSettings{}},
+	}
+}
+
+// A submenu's enabled item takes its key equivalent with Control, and only
+// with Control. A disabled item of a submenu gives its key to the window,
+// as a disabled item of a menu does. The bar stays across SetItems, so the
+// test shows the live submenu following the declaration.
+func TestASubmenuItemTakesItsKeyWhileEnabled(t *testing.T) {
+	m := cardMenu(t)
+	nativeBuild("Card")
+	press := func(key string, control, takes bool) {
+		t.Helper()
+		if got := nativePress(key, false, control); got != takes {
+			t.Errorf("%U control=%v: the bar takes the key %v, want %v", []rune(key)[0], control, got, takes)
+		}
+	}
+	press(UpArrow, true, true)
+	press(UpArrow, false, false)
+	press(DownArrow, true, false)
+
+	m.SetItems(0, moveItems(true, false)...)
+	press(UpArrow, true, false)
+	press(DownArrow, true, true)
+	press(DownArrow, false, false)
+
+	m.SetItems(0, moveItems(true, true)...)
+	press(UpArrow, true, false)
+	press(DownArrow, true, false)
+}
+
+// A submenu that the declaration leaves empty shows the items that SetItems
+// gives it, with their disabled state, when it next opens. A new item count
+// rebuilds the live submenu, and a change of state alone updates it.
+func TestASubmenuShowsTheItemsOfSetItems(t *testing.T) {
+	m := cardMenu(t)
+	nativeBuild("Card")
+	check := func(want ...string) {
+		t.Helper()
+		got := nativeShown("Move to Column")
+		if strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Fatalf("Move to Column shows %q, want %q", got, want)
+		}
+	}
+	check()
+	m.SetItems(1, columnItems(0, "To Do", "In Progress", "Done")...)
+	check("To Do off", "In Progress", "Done")
+	m.SetItems(1, columnItems(2, "To Do", "In Progress", "Done")...)
+	check("To Do", "In Progress", "Done off")
+	m.SetItems(1, columnItems(3, "To Do", "In Progress", "Done", "Later")...)
+	check("To Do", "In Progress", "Done", "Later off")
+	if got := nativeShown("Move Item"); strings.Join(got, "|") != "Up|Down off" {
+		t.Fatalf("Move Item shows %q, want Up and a disabled Down", got)
+	}
 }

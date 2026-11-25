@@ -167,7 +167,8 @@
 // add to it. NSApp's main menu is an ordinary mutable menu all the same, so
 // [NewMenuBar] amends it in place: [MenuItem] values declare a menu, a title,
 // a one-character chord with the command modifier implied (an uppercase
-// letter adds Shift), and the message choosing the item posts.
+// letter adds Shift, and [MenuItem.Control] adds Control), and the message
+// choosing the item posts. [UpArrow] and [DownArrow] are the arrow keys.
 //
 //	menu := desktop.NewMenuBar(w,
 //		desktop.MenuItem{Menu: "File", Title: "New Note", Key: "n", Msg: NewNote{}},
@@ -187,9 +188,15 @@
 // the state when the platform validates the item: when its menu opens, and
 // when its key equivalent is pressed.
 //
+// A submenu item holds a submenu of its [MenuItem.Items].
+// [MenuBar.SetItems] replaces those items while the application runs, so a
+// submenu lists the application's own things, as a list of columns follows
+// a file. The bar takes the new items in one step when the platform next
+// updates the submenu or searches it for a key equivalent.
+//
 // A menu that [NewMenuBar] creates answers its key equivalents from the
-// declaration. An enabled item takes its key. A disabled item does not, and
-// the key goes to the window. So an application disables Undo while a text
+// declaration, and so does each submenu in it. An enabled item takes its
+// key. A disabled item does not, and the key goes to the window. So an application disables Undo while a text
 // field holds the keyboard, and the field gets Cmd-Z for its own text.
 //
 // The bar is the application's, not the window's: macOS draws one bar per

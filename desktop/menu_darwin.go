@@ -11,7 +11,10 @@ package desktop
 */
 import "C"
 
-import "unsafe"
+import (
+	"strings"
+	"unsafe"
+)
 
 // install hands the bar's declaration to the native side and asks for the
 // amendment. The declaration is reset first, so a second [MenuBar] replaces
@@ -32,7 +35,10 @@ import "unsafe"
 func (m *MenuBar) install() {
 	C.vgio_menu_reset()
 	for i, it := range m.items {
-		m.declare(it, m.tags[i])
+		m.declare(it, m.tags[i], 0)
+		for j, sub := range it.Items {
+			m.declare(sub, m.subTags[i][j], m.tags[i])
+		}
 	}
 	C.vgio_menu_apply()
 	m.w.OnConfigure(func() {
@@ -41,17 +47,46 @@ func (m *MenuBar) install() {
 	debugf("desktop: %d menu item(s) declared on the application's bar", len(m.items))
 }
 
-// declare passes one item across the boundary. The three strings are copied
-// on the far side, so the C strings are freed as soon as the call returns and
-// no Go memory is reachable from the native declaration.
-func (m *MenuBar) declare(it MenuItem, tag int) {
+// declare passes one item across the boundary. parent is the tag of the
+// submenu item that holds it, or 0. The three strings are copied on the
+// far side, so the C strings are freed as soon as the call returns and no
+// Go memory is reachable from the native declaration.
+func (m *MenuBar) declare(it MenuItem, tag, parent int) {
 	menu := C.CString(it.Menu)
 	title := C.CString(it.Title)
 	key := C.CString(it.Key)
 	defer C.free(unsafe.Pointer(menu))
 	defer C.free(unsafe.Pointer(title))
 	defer C.free(unsafe.Pointer(key))
-	C.vgio_menu_declare(menu, title, key, C.int(tag), cbool(it.Disabled))
+	C.vgio_menu_declare(menu, title, key, C.int(tag), C.int(parent), itemFlags(it))
+}
+
+// showItems gives the submenu item with tag parent the items items, with
+// the tags tags. The native side takes them in one step.
+func (m *MenuBar) showItems(parent int, items []MenuItem, tags []int) {
+	for j, it := range items {
+		title := C.CString(it.Title)
+		key := C.CString(it.Key)
+		C.vgio_menu_stage(title, key, C.int(tags[j]), itemFlags(it))
+		C.free(unsafe.Pointer(title))
+		C.free(unsafe.Pointer(key))
+	}
+	C.vgio_menu_replace(C.int(parent))
+}
+
+// itemFlags is the native flags of it: disabled, Control and submenu.
+func itemFlags(it MenuItem) C.int {
+	var f C.int
+	if it.Disabled {
+		f |= C.VGIO_MENU_DISABLED
+	}
+	if it.Control {
+		f |= C.VGIO_MENU_CONTROL
+	}
+	if it.Submenu {
+		f |= C.VGIO_MENU_SUBMENU
+	}
+	return f
 }
 
 // show gives the declared item with tag its new title and disabled state.
@@ -81,11 +116,44 @@ func nativeItem(tag int) (title string, disabled, ok bool) {
 // with Shift when shift is true. A key that the bar does not take goes on
 // to the window.
 func nativeTakesKey(menu, chars string, shift bool) bool {
+	nativeBuild(menu)
+	return nativePress(chars, shift, false)
+}
+
+// nativeBuild builds a menu bar with one menu titled menu, which holds the
+// declared items of that menu. The bar stays until the next nativeBuild,
+// so a test presses keys on it after the declaration changes.
+func nativeBuild(menu string) {
 	m := C.CString(menu)
-	c := C.CString(chars)
 	defer C.free(unsafe.Pointer(m))
+	C.vgio_menu_test_build(m)
+}
+
+// nativePress reports whether the bar of the last nativeBuild takes the key
+// equivalent chars, with Command, and with Shift and Control when asked.
+// An arrow key is pressed as a keyboard sends it.
+func nativePress(chars string, shift, control bool) bool {
+	c := C.CString(chars)
 	defer C.free(unsafe.Pointer(c))
-	return C.vgio_menu_takes_key(m, c, cbool(shift)) != 0
+	return C.vgio_menu_test_press(c, cbool(shift), cbool(control)) != 0
+}
+
+// nativeShown is what the submenu titled submenu of the bar of the last
+// nativeBuild shows when it opens: one line per item, its title and "off"
+// for a disabled item.
+func nativeShown(submenu string) []string {
+	s := C.CString(submenu)
+	defer C.free(unsafe.Pointer(s))
+	out := C.vgio_menu_test_shown(s)
+	if out == nil {
+		return nil
+	}
+	defer C.free(unsafe.Pointer(out))
+	shown := C.GoString(out)
+	if shown == "" {
+		return []string{}
+	}
+	return strings.Split(shown, "\n")
 }
 
 func cbool(b bool) C.int {

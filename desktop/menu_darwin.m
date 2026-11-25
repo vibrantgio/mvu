@@ -34,7 +34,10 @@ extern void vgioMenuChosen(int tag);
 @property(nonatomic, copy) NSString *title;
 @property(nonatomic, copy) NSString *key;
 @property(nonatomic, assign) int itemTag;
+@property(nonatomic, assign) int parentTag;
 @property(nonatomic, assign) BOOL disabled;
+@property(nonatomic, assign) BOOL control;
+@property(nonatomic, assign) BOOL submenu;
 @end
 
 @implementation VGioMenuDecl
@@ -44,7 +47,9 @@ extern void vgioMenuChosen(int tag);
 static VGioMenuDecl *vgio_menu_decl_for(int tag);
 
 // Gives each declared item of menu its key equivalent, or none for a
-// disabled item when forKey is YES. Main thread only.
+// disabled item when forKey is YES, and does the same in each submenu of
+// menu. A submenu whose declared items changed gets the new items first.
+// Main thread only.
 static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
 
 // The target every added item points at. An item whose target is nil is
@@ -63,8 +68,11 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
 // item before the search, and answers NO. The search then finds no
 // disabled item, and AppKit gives the key to the key window.
 // menuNeedsUpdate: gives each item its key equivalent again before the
-// menu shows, so a disabled item shows its key.
-@interface VGioMenuTarget : NSObject <NSMenuDelegate>
+// menu shows, so a disabled item shows its key. The probe also measured
+// that AppKit asks the delegate of the menu before the delegate of each
+// submenu in it. Each menu still syncs its submenus itself, so the route
+// does not depend on that order.
+@interface VGioMenuTarget : NSObject <NSMenuDelegate, NSMenuItemValidation>
 - (void)vgioMenuChosen:(id)sender;
 @end
 
@@ -100,6 +108,10 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
 // thread; vgio_menu_decls is the lock token for both.
 static NSMutableArray<VGioMenuDecl *> *vgio_menu_decls = nil;
 
+// The items that the next vgio_menu_replace takes. vgio_menu_decls is the
+// lock token.
+static NSMutableArray<VGioMenuDecl *> *vgio_menu_staged = nil;
+
 // What the last apply put into the bar, so the next one can take it out
 // again: the added items, plus the separator that fences them off from Gio's
 // Hide and Quit, plus the top-level menu items whose menus this created.
@@ -127,19 +139,83 @@ void vgio_menu_reset(void) {
 	}
 }
 
-void vgio_menu_declare(const char *menu, const char *title, const char *key, int tag, int disabled) {
+static VGioMenuDecl *vgio_menu_new_decl(const char *menu, const char *title, const char *key, int tag, int parent, int flags) {
+	VGioMenuDecl *d = [VGioMenuDecl new];
+	d.menu = menu != NULL ? @(menu) : @"";
+	d.title = title != NULL ? @(title) : @"";
+	d.key = key != NULL ? @(key) : @"";
+	d.itemTag = tag;
+	d.parentTag = parent;
+	d.disabled = (flags & VGIO_MENU_DISABLED) != 0;
+	d.control = (flags & VGIO_MENU_CONTROL) != 0;
+	d.submenu = (flags & VGIO_MENU_SUBMENU) != 0;
+	return d;
+}
+
+void vgio_menu_declare(const char *menu, const char *title, const char *key, int tag, int parent, int flags) {
 	@autoreleasepool {
-		VGioMenuDecl *d = [VGioMenuDecl new];
-		d.menu = menu != NULL ? @(menu) : @"";
-		d.title = title != NULL ? @(title) : @"";
-		d.key = key != NULL ? @(key) : @"";
-		d.itemTag = tag;
-		d.disabled = disabled != 0;
+		VGioMenuDecl *d = vgio_menu_new_decl(menu, title, key, tag, parent, flags);
 		NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
 		@synchronized(decls) {
 			[decls addObject:d];
 		}
 	}
+}
+
+void vgio_menu_stage(const char *title, const char *key, int tag, int flags) {
+	@autoreleasepool {
+		VGioMenuDecl *d = vgio_menu_new_decl(NULL, title, key, tag, 0, flags);
+		NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
+		@synchronized(decls) {
+			if (vgio_menu_staged == nil) {
+				vgio_menu_staged = [NSMutableArray array];
+			}
+			[vgio_menu_staged addObject:d];
+		}
+	}
+}
+
+void vgio_menu_replace(int parent) {
+	@autoreleasepool {
+		NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
+		@synchronized(decls) {
+			NSArray<VGioMenuDecl *> *staged = vgio_menu_staged != nil ? [vgio_menu_staged copy] : @[];
+			[vgio_menu_staged removeAllObjects];
+			VGioMenuDecl *holder = nil;
+			for (VGioMenuDecl *d in decls) {
+				if (d.itemTag == parent) {
+					holder = d;
+				}
+			}
+			if (holder == nil) {
+				return;
+			}
+			NSIndexSet *old = [decls indexesOfObjectsPassingTest:^BOOL(VGioMenuDecl *d, NSUInteger i, BOOL *stop) {
+				return d.parentTag == parent;
+			}];
+			[decls removeObjectsAtIndexes:old];
+			for (VGioMenuDecl *d in staged) {
+				d.menu = holder.menu;
+				d.parentTag = parent;
+				[decls addObject:d];
+			}
+		}
+	}
+}
+
+// The declared items of the submenu item with tag parent, in order. Any
+// thread.
+static NSArray<VGioMenuDecl *> *vgio_menu_children(int parent) {
+	NSMutableArray<VGioMenuDecl *> *out = [NSMutableArray array];
+	NSMutableArray<VGioMenuDecl *> *decls = vgio_menu_declarations();
+	@synchronized(decls) {
+		for (VGioMenuDecl *d in decls) {
+			if (d.parentTag == parent) {
+				[out addObject:d];
+			}
+		}
+	}
+	return out;
 }
 
 static VGioMenuDecl *vgio_menu_decl_for(int tag) {
@@ -168,7 +244,10 @@ void vgio_menu_set(int tag, const char *title, int disabled) {
 				d.title = title != NULL ? @(title) : @"";
 				d.key = old.key;
 				d.itemTag = tag;
+				d.parentTag = old.parentTag;
 				d.disabled = disabled != 0;
+				d.control = old.control;
+				d.submenu = old.submenu;
 				decls[i] = d;
 				return;
 			}
@@ -176,10 +255,39 @@ void vgio_menu_set(int tag, const char *title, int disabled) {
 	}
 }
 
+static NSMenuItem *vgio_menu_item(VGioMenuDecl *d, VGioMenuTarget *target);
+
+// Gives submenu the items that the submenu item d declares, when its
+// items are not those. Main thread only.
+static void vgio_menu_sync_items(NSMenu *submenu, VGioMenuDecl *d) {
+	NSArray<VGioMenuDecl *> *kids = vgio_menu_children(d.itemTag);
+	BOOL same = [submenu numberOfItems] == (NSInteger)[kids count];
+	for (NSUInteger i = 0; same && i < [kids count]; i++) {
+		same = [[submenu itemAtIndex:i] tag] == kids[i].itemTag;
+	}
+	if (same) {
+		return;
+	}
+	VGioMenuTarget *target = (VGioMenuTarget *)[submenu delegate];
+	[submenu removeAllItems];
+	for (VGioMenuDecl *k in kids) {
+		[submenu addItem:vgio_menu_item(k, target)];
+	}
+}
+
 static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey) {
-	for (NSMenuItem *item in [menu itemArray]) {
+	for (NSMenuItem *item in [[menu itemArray] copy]) {
 		VGioMenuDecl *d = vgio_menu_decl_for((int)[item tag]);
 		if (d == nil) {
+			continue;
+		}
+		if (d.submenu) {
+			// AppKit validates no submenu item, so its title is given here.
+			if (![[item title] isEqualToString:d.title]) {
+				[item setTitle:d.title];
+			}
+			vgio_menu_sync_items([item submenu], d);
+			vgio_menu_sync_keys([item submenu], forKey);
 			continue;
 		}
 		NSString *key = forKey && d.disabled ? @"" : d.key;
@@ -190,41 +298,77 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey) {
 }
 
 // The menu item that shows declaration d and posts its choice to target.
+// A submenu item holds a submenu of its declared items, and target is the
+// submenu's delegate. AppKit enables a submenu item and validates none.
 static NSMenuItem *vgio_menu_item(VGioMenuDecl *d, VGioMenuTarget *target) {
+	if (d.submenu) {
+		NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:d.title action:NULL keyEquivalent:@""];
+		NSMenu *sub = [[NSMenu alloc] initWithTitle:d.title];
+		[sub setDelegate:target];
+		for (VGioMenuDecl *k in vgio_menu_children(d.itemTag)) {
+			[sub addItem:vgio_menu_item(k, target)];
+		}
+		[item setSubmenu:sub];
+		[item setTag:d.itemTag];
+		return item;
+	}
 	NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:d.title
 	                                              action:@selector(vgioMenuChosen:)
 	                                       keyEquivalent:d.key];
-	[item setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+	NSEventModifierFlags mask = NSEventModifierFlagCommand;
+	if (d.control) {
+		mask |= NSEventModifierFlagControl;
+	}
+	[item setKeyEquivalentModifierMask:mask];
 	[item setEnabled:!d.disabled];
 	[item setTarget:target];
 	[item setTag:d.itemTag];
 	return item;
 }
 
-int vgio_menu_takes_key(const char *menu, const char *chars, int shift) {
+// The bar, its one menu and the target that vgio_menu_test_build made.
+// Test only.
+static NSMenu *vgio_menu_test_bar = nil;
+static NSMenu *vgio_menu_test_menu = nil;
+static VGioMenuTarget *vgio_menu_test_target = nil;
+
+void vgio_menu_test_build(const char *menu) {
 	@autoreleasepool {
 		NSString *title = menu != NULL ? @(menu) : @"";
-		NSString *ignoring = chars != NULL ? @(chars) : @"";
-		VGioMenuTarget *target = [VGioMenuTarget new];
-		NSMenu *bar = [[NSMenu alloc] initWithTitle:@""];
-		NSMenu *sub = [[NSMenu alloc] initWithTitle:title];
-		[sub setDelegate:target];
+		vgio_menu_test_target = [VGioMenuTarget new];
+		vgio_menu_test_bar = [[NSMenu alloc] initWithTitle:@""];
+		vgio_menu_test_menu = [[NSMenu alloc] initWithTitle:title];
+		[vgio_menu_test_menu setDelegate:vgio_menu_test_target];
 		NSMenuItem *top = [[NSMenuItem alloc] initWithTitle:title action:NULL keyEquivalent:@""];
-		[top setSubmenu:sub];
-		[bar addItem:top];
-		NSArray<VGioMenuDecl *> *decls = nil;
-		NSMutableArray<VGioMenuDecl *> *live = vgio_menu_declarations();
-		@synchronized(live) {
-			decls = [live copy];
-		}
-		for (VGioMenuDecl *d in decls) {
+		[top setSubmenu:vgio_menu_test_menu];
+		[vgio_menu_test_bar addItem:top];
+		for (VGioMenuDecl *d in vgio_menu_children(0)) {
 			if ([d.menu isEqualToString:title]) {
-				[sub addItem:vgio_menu_item(d, target)];
+				[vgio_menu_test_menu addItem:vgio_menu_item(d, vgio_menu_test_target)];
 			}
 		}
+	}
+}
+
+int vgio_menu_test_press(const char *chars, int shift, int control) {
+	@autoreleasepool {
+		NSString *ignoring = chars != NULL ? @(chars) : @"";
+		NSString *typed = [ignoring lowercaseString];
 		NSEventModifierFlags flags = NSEventModifierFlagCommand;
 		if (shift != 0) {
 			flags |= NSEventModifierFlagShift;
+		}
+		if (control != 0) {
+			flags |= NSEventModifierFlagControl;
+		}
+		unsigned short code = 0;
+		if ([ignoring length] == 1) {
+			unichar c = [ignoring characterAtIndex:0];
+			if (c == NSUpArrowFunctionKey || c == NSDownArrowFunctionKey) {
+				code = c == NSUpArrowFunctionKey ? 126 : 125;
+				flags |= NSEventModifierFlagFunction | NSEventModifierFlagNumericPad;
+				typed = ignoring;
+			}
 		}
 		NSEvent *event = [NSEvent keyEventWithType:NSEventTypeKeyDown
 		                                  location:NSZeroPoint
@@ -232,11 +376,48 @@ int vgio_menu_takes_key(const char *menu, const char *chars, int shift) {
 		                                 timestamp:0
 		                              windowNumber:0
 		                                   context:nil
-		                                characters:[ignoring lowercaseString]
+		                                characters:typed
 		                   charactersIgnoringModifiers:ignoring
 		                                 isARepeat:NO
-		                                   keyCode:0];
-		return [bar performKeyEquivalent:event] ? 1 : 0;
+		                                   keyCode:code];
+		return [vgio_menu_test_bar performKeyEquivalent:event] ? 1 : 0;
+	}
+}
+
+// The submenu titled title in menu or in a submenu of menu, or nil.
+static NSMenu *vgio_menu_find(NSMenu *menu, NSString *title) {
+	for (NSMenuItem *item in [menu itemArray]) {
+		NSMenu *sub = [item submenu];
+		if (sub == nil) {
+			continue;
+		}
+		if ([[sub title] isEqualToString:title]) {
+			return sub;
+		}
+		NSMenu *found = vgio_menu_find(sub, title);
+		if (found != nil) {
+			return found;
+		}
+	}
+	return nil;
+}
+
+char *vgio_menu_test_shown(const char *submenu) {
+	@autoreleasepool {
+		[vgio_menu_test_target menuNeedsUpdate:vgio_menu_test_menu];
+		NSMenu *sub = vgio_menu_find(vgio_menu_test_menu, submenu != NULL ? @(submenu) : @"");
+		if (sub == nil) {
+			return NULL;
+		}
+		[vgio_menu_test_target menuNeedsUpdate:sub];
+		// Without an application, NSMenu's update validates no item, so
+		// each item is validated here, as AppKit validates it.
+		NSMutableArray<NSString *> *lines = [NSMutableArray array];
+		for (NSMenuItem *item in [sub itemArray]) {
+			BOOL enabled = [vgio_menu_test_target validateMenuItem:item];
+			[lines addObject:enabled ? [item title] : [[item title] stringByAppendingString:@" off"]];
+		}
+		return strdup([[lines componentsJoinedByString:@"\n"] UTF8String]);
 	}
 }
 
@@ -308,10 +489,7 @@ static void vgio_menu_apply_main(void) {
 	[vgio_menu_added removeAllObjects];
 
 	NSArray<VGioMenuDecl *> *decls = nil;
-	NSMutableArray<VGioMenuDecl *> *live = vgio_menu_declarations();
-	@synchronized(live) {
-		decls = [live copy];
-	}
+	decls = vgio_menu_children(0);
 
 	NSMutableDictionary<NSString *, NSMenu *> *created = [NSMutableDictionary dictionary];
 	// Items destined for the application's own menu go in at the top, in

@@ -147,6 +147,12 @@ func TestAMalformedDeclarationPanics(t *testing.T) {
 	}{
 		{"no title", MenuItem{Menu: "File", Key: "n", Msg: menuNew{}}},
 		{"multi-character key", MenuItem{Title: "New Chat", Key: "cmd-n", Msg: menuNew{}}},
+		{"items with no submenu", MenuItem{Title: "Move", Items: []MenuItem{{Title: "Up", Msg: menuNew{}}}}},
+		{"submenu with a key", MenuItem{Title: "Move", Key: "m", Submenu: true}},
+		{"submenu with a message", MenuItem{Title: "Move", Submenu: true, Msg: menuNew{}}},
+		{"submenu in a submenu", MenuItem{Title: "Move", Submenu: true, Items: []MenuItem{{Title: "To", Submenu: true}}}},
+		{"menu in a submenu", MenuItem{Title: "Move", Submenu: true, Items: []MenuItem{{Menu: "Card", Title: "Up", Msg: menuNew{}}}}},
+		{"untitled item in a submenu", MenuItem{Title: "Move", Submenu: true, Items: []MenuItem{{Msg: menuNew{}}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
@@ -210,4 +216,102 @@ func TestSetWithAnEmptyTitlePanics(t *testing.T) {
 		}
 	}()
 	m.Set(0, "", false)
+}
+
+// menuColumn is the message of one item of a submenu that SetItems fills.
+type menuColumn struct{ Column int }
+
+// columnItems is a submenu's items, one per title, each posting its index.
+// The item at disabled is disabled.
+func columnItems(disabled int, titles ...string) []MenuItem {
+	items := make([]MenuItem, len(titles))
+	for i, title := range titles {
+		items[i] = MenuItem{Title: title, Disabled: i == disabled, Msg: menuColumn{i}}
+	}
+	return items
+}
+
+// chosen is the message that choosing the item with tag posts, or nil.
+func chosen(m *MenuBar, tag int) any {
+	chooseMenuTag(tag)
+	select {
+	case got := <-m.msgs:
+		return got
+	default:
+		return nil
+	}
+}
+
+// An item of a submenu posts its own message, and the submenu item posts
+// nothing. SetItems replaces the items and their messages. A change of
+// state alone keeps the items' tags, and a change of the item count gives
+// new tags and retires the old ones.
+func TestSetItemsReplacesASubmenusItems(t *testing.T) {
+	m := NewMenuBar(testWindow(t),
+		MenuItem{Menu: "Card", Title: "Move Item", Submenu: true, Items: []MenuItem{
+			{Title: "Up", Key: UpArrow, Control: true, Msg: menuNew{}},
+			{Title: "Down", Key: DownArrow, Control: true, Msg: menuSettings{}},
+		}},
+		MenuItem{Menu: "Card", Title: "Move to Column", Submenu: true},
+	)
+	if got := chosen(m, m.subTags[0][1]); got != (menuSettings{}) {
+		t.Fatalf("choosing Down posted %v, want desktop.menuSettings", got)
+	}
+	if got := chosen(m, m.tags[0]); got != nil {
+		t.Fatalf("choosing the submenu item posted %T", got)
+	}
+	if len(m.subTags[1]) != 0 {
+		t.Fatalf("the empty submenu holds %d tags", len(m.subTags[1]))
+	}
+
+	m.SetItems(1, columnItems(0, "To Do", "Done")...)
+	first := append([]int(nil), m.subTags[1]...)
+	if got := chosen(m, first[1]); got != (menuColumn{1}) {
+		t.Fatalf("choosing Done posted %v, want column 1", got)
+	}
+
+	m.SetItems(1, columnItems(1, "To Do", "Done")...)
+	if m.subTags[1][0] != first[0] || m.subTags[1][1] != first[1] {
+		t.Fatal("a change of state alone gave the items new tags")
+	}
+	if got := m.items[1].Items[1]; !got.Disabled {
+		t.Fatal("SetItems did not disable Done")
+	}
+
+	m.SetItems(1, columnItems(2, "To Do", "In Progress", "Done")...)
+	if len(m.subTags[1]) != 3 || m.subTags[1][0] == first[0] {
+		t.Fatalf("a new item count kept the tags %v", m.subTags[1])
+	}
+	if got := chosen(m, first[1]); got != nil {
+		t.Fatalf("a retired tag posted %v", got)
+	}
+	if got := chosen(m, m.subTags[1][2]); got != (menuColumn{2}) {
+		t.Fatalf("choosing Done posted %v, want column 2", got)
+	}
+}
+
+// SetItems takes only a submenu item, and only well-formed items.
+func TestSetItemsPanicsOnAMalformedCall(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		i     int
+		items []MenuItem
+	}{
+		{"no submenu", 0, nil},
+		{"untitled item", 1, []MenuItem{{Msg: menuNew{}}}},
+		{"submenu in a submenu", 1, []MenuItem{{Title: "To", Submenu: true}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewMenuBar(testWindow(t),
+				MenuItem{Menu: "Edit", Title: "Undo", Msg: menuNew{}},
+				MenuItem{Menu: "Card", Title: "Move to Column", Submenu: true},
+			)
+			defer func() {
+				if recover() == nil {
+					t.Fatal("SetItems did not panic")
+				}
+			}()
+			m.SetItems(tc.i, tc.items...)
+		})
+	}
 }

@@ -13,3 +13,6 @@ func (m *MenuBar) install() {}
 
 // show has no bar to change. [MenuBar.Set] keeps the item's state in Go.
 func (m *MenuBar) show(tag int, title string, disabled bool) {}
+
+// showItems has no bar to change. [MenuBar.SetItems] keeps the items in Go.
+func (m *MenuBar) showItems(parent int, items []MenuItem, tags []int) {}
