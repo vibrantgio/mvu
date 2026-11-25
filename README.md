@@ -358,8 +358,10 @@ through cgo.
   item's title and disabled state. A key equivalent can add Control, and
   `UpArrow` and `DownArrow` are the arrow keys. A submenu item holds a
   submenu of items, and `MenuBar.SetItems` replaces those items while the
-  application runs. A disabled item in a menu or a submenu that the bar
-  creates gives its key equivalent to the window.
+  application runs. A submenu item is disabled as the application sets it.
+  A disabled item in a menu or a submenu that the bar creates gives its key
+  equivalent to the window, and so does each item under a disabled submenu
+  item.
 - `Download` is a command that asks the platform for the contents of a file
   it keeps in the cloud and answers one `Downloaded` message.
 - `ScrollBars` reports the system's scroll bar setting.

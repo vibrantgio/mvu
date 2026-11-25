@@ -74,7 +74,9 @@ type MenuItem struct {
 
 	// Disabled shows the item greyed out, and a person cannot choose it.
 	// [MenuBar.Set] changes it, so an item can follow the application's
-	// model, as Undo is disabled when there is nothing to undo.
+	// model, as Undo is disabled when there is nothing to undo. A disabled
+	// submenu item opens no submenu, and no item of its submenu takes its
+	// key equivalent.
 	Disabled bool
 
 	// Msg is the message posted when the item is chosen. The same value is
@@ -83,7 +85,7 @@ type MenuItem struct {
 	Msg mvu.Message
 
 	// Submenu makes the item open a submenu that holds Items, in order. A
-	// submenu item has no Key and no Msg, and a person does not choose it.
+	// submenu item has no Key and no Msg, and choosing it posts nothing.
 	// [MenuBar.SetItems] replaces its items while the application runs, so
 	// a submenu can list the application's own things. An item of Items
 	// names no Menu and is no submenu itself.
@@ -242,7 +244,7 @@ func (m *MenuBar) Messages() rx.Observable[mvu.Message] {
 // item: when a person opens the item's menu, or presses its key
 // equivalent. Set itself never waits for the platform's UI thread. Set on
 // a bar that a later [NewMenuBar] superseded changes nothing in the bar.
-// A submenu item takes the title, and the platform keeps it enabled.
+// A submenu item takes the title and the disabled state too.
 func (m *MenuBar) Set(i int, title string, disabled bool) {
 	if title == "" {
 		panic("desktop: MenuBar.Set needs a title (an item with no title is a bug, not a separator)")

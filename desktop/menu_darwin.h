@@ -61,10 +61,10 @@ extern void vgio_menu_test_build(const char *menu);
 extern int vgio_menu_test_press(const char *chars, int shift, int control);
 
 // vgio_menu_test_shown updates and validates the submenu titled submenu of
-// the kept bar, as AppKit does before it shows the submenu, and gives one
-// line per item:
-// its title, and " off" after a disabled item. The caller frees the
-// string. It gives NULL when the bar holds no such submenu.
+// the kept bar, or the kept bar's one menu when submenu is its title, as
+// AppKit does before it shows the menu. It gives one line per item: its
+// title, and " off" after a disabled item. The caller frees the string. It
+// gives NULL when the bar holds no such menu.
 extern char *vgio_menu_test_shown(const char *submenu);
 
 // vgio_menu_apply makes the bar match the declaration, on the AppKit main

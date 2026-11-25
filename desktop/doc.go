@@ -196,8 +196,11 @@
 //
 // A menu that [NewMenuBar] creates answers its key equivalents from the
 // declaration, and so does each submenu in it. An enabled item takes its
-// key. A disabled item does not, and the key goes to the window. So an application disables Undo while a text
-// field holds the keyboard, and the field gets Cmd-Z for its own text.
+// key. A disabled item does not, and the key goes to the window. So an
+// application disables Undo while a text field holds the keyboard, and the
+// field gets Cmd-Z for its own text. A submenu item is disabled as the
+// application sets it, and no item under a disabled submenu item takes its
+// key.
 //
 // The bar is the application's, not the window's: macOS draws one bar per
 // process whatever it has open, so a MenuBar is a process-wide declaration

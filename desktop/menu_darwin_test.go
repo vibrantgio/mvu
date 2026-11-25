@@ -190,3 +190,39 @@ func TestASubmenuShowsTheItemsOfSetItems(t *testing.T) {
 		t.Fatalf("Move Item shows %q, want Up and a disabled Down", got)
 	}
 }
+
+// A submenu item follows its declared disabled state and Set, as every
+// other item does. A disabled submenu item opens no submenu, so no item of
+// its submenu takes a key: the key goes to the window, also from an enabled
+// item.
+func TestASubmenuItemIsDisabledAsTheApplicationSetsIt(t *testing.T) {
+	m := NewMenuBar(testWindow(t),
+		MenuItem{Menu: "Card", Title: "Move Item", Submenu: true, Disabled: true, Items: moveItems(false, false)},
+		MenuItem{Menu: "Card", Title: "Move to Column", Submenu: true, Disabled: true},
+	)
+	nativeBuild("Card")
+	check := func(want ...string) {
+		t.Helper()
+		got := nativeShown("Card")
+		if strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Fatalf("Card shows %q, want %q", got, want)
+		}
+	}
+	check("Move Item off", "Move to Column off")
+	if nativePress(UpArrow, false, true) || nativePress(DownArrow, false, true) {
+		t.Error("an enabled item of a disabled submenu item takes its key")
+	}
+
+	m.Set(0, "Move Item", false)
+	check("Move Item", "Move to Column off")
+	if !nativePress(UpArrow, false, true) || !nativePress(DownArrow, false, true) {
+		t.Error("an enabled item of an enabled submenu item does not take its key")
+	}
+
+	m.Set(1, "Move to Column", false)
+	m.Set(0, "Move Item", true)
+	check("Move Item off", "Move to Column")
+	if nativePress(UpArrow, false, true) {
+		t.Error("after Set disables the submenu item, its Up takes the key")
+	}
+}

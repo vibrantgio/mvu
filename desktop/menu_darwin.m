@@ -46,11 +46,16 @@ extern void vgioMenuChosen(int tag);
 // The declared item with tag, or nil. Any thread.
 static VGioMenuDecl *vgio_menu_decl_for(int tag);
 
-// Gives each declared item of menu its key equivalent, or none for a
-// disabled item when forKey is YES, and does the same in each submenu of
-// menu. A submenu whose declared items changed gets the new items first.
-// Main thread only.
-static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
+// Gives each declared item of menu its key equivalent, and does the same
+// in each submenu of menu. When forKey is YES, a disabled item gets no key
+// equivalent, and neither does an item when off is YES. Each item of a
+// disabled submenu item gets off. A submenu whose declared items changed
+// gets the new items first. Main thread only.
+static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey, BOOL off);
+
+// Reports whether a declared submenu item that holds menu, or a menu over
+// it, is disabled. Main thread only.
+static BOOL vgio_menu_off(NSMenu *menu);
 
 // The target every added item points at. An item whose target is nil is
 // offered to the responder chain and disabled when nobody answers; naming a
@@ -72,8 +77,14 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
 // that AppKit asks the delegate of the menu before the delegate of each
 // submenu in it. Each menu still syncs its submenus itself, so the route
 // does not depend on that order.
+//
+// A submenu item names the target and vgioSubmenu:, which does nothing.
+// AppKit enables an item whose action is its own submenuAction: and asks
+// no target. A headless probe on macOS 26 with an NSApplication measured
+// that an item with another action and a submenu goes to validateMenuItem:.
 @interface VGioMenuTarget : NSObject <NSMenuDelegate, NSMenuItemValidation>
 - (void)vgioMenuChosen:(id)sender;
+- (void)vgioSubmenu:(id)sender;
 @end
 
 @implementation VGioMenuTarget
@@ -81,6 +92,8 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
 	if ([sender isKindOfClass:[NSMenuItem class]]) {
 		vgioMenuChosen((int)[(NSMenuItem *)sender tag]);
 	}
+}
+- (void)vgioSubmenu:(id)sender {
 }
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
 	VGioMenuDecl *d = vgio_menu_decl_for((int)[item tag]);
@@ -96,11 +109,11 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey);
                     forEvent:(NSEvent *)event
                       target:(id _Nullable *)target
                       action:(SEL _Nullable *)action {
-	vgio_menu_sync_keys(menu, YES);
+	vgio_menu_sync_keys(menu, YES, vgio_menu_off(menu));
 	return NO;
 }
 - (void)menuNeedsUpdate:(NSMenu *)menu {
-	vgio_menu_sync_keys(menu, NO);
+	vgio_menu_sync_keys(menu, NO, NO);
 }
 @end
 
@@ -275,22 +288,32 @@ static void vgio_menu_sync_items(NSMenu *submenu, VGioMenuDecl *d) {
 	}
 }
 
-static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey) {
+static BOOL vgio_menu_off(NSMenu *menu) {
+	for (NSMenu *m = menu; [m supermenu] != nil; m = [m supermenu]) {
+		NSInteger i = [[m supermenu] indexOfItemWithSubmenu:m];
+		if (i < 0) {
+			return NO;
+		}
+		VGioMenuDecl *d = vgio_menu_decl_for((int)[[[m supermenu] itemAtIndex:i] tag]);
+		if (d != nil && d.disabled) {
+			return YES;
+		}
+	}
+	return NO;
+}
+
+static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey, BOOL off) {
 	for (NSMenuItem *item in [[menu itemArray] copy]) {
 		VGioMenuDecl *d = vgio_menu_decl_for((int)[item tag]);
 		if (d == nil) {
 			continue;
 		}
 		if (d.submenu) {
-			// AppKit validates no submenu item, so its title is given here.
-			if (![[item title] isEqualToString:d.title]) {
-				[item setTitle:d.title];
-			}
 			vgio_menu_sync_items([item submenu], d);
-			vgio_menu_sync_keys([item submenu], forKey);
+			vgio_menu_sync_keys([item submenu], forKey, off || d.disabled);
 			continue;
 		}
-		NSString *key = forKey && d.disabled ? @"" : d.key;
+		NSString *key = forKey && (off || d.disabled) ? @"" : d.key;
 		if (![[item keyEquivalent] isEqualToString:key]) {
 			[item setKeyEquivalent:key];
 		}
@@ -299,10 +322,15 @@ static void vgio_menu_sync_keys(NSMenu *menu, BOOL forKey) {
 
 // The menu item that shows declaration d and posts its choice to target.
 // A submenu item holds a submenu of its declared items, and target is the
-// submenu's delegate. AppKit enables a submenu item and validates none.
+// submenu's delegate. A submenu item gets its action before its submenu,
+// because setSubmenu: gives an item with no action submenuAction:.
 static NSMenuItem *vgio_menu_item(VGioMenuDecl *d, VGioMenuTarget *target) {
 	if (d.submenu) {
-		NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:d.title action:NULL keyEquivalent:@""];
+		NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:d.title
+		                                              action:@selector(vgioSubmenu:)
+		                                       keyEquivalent:@""];
+		[item setTarget:target];
+		[item setEnabled:!d.disabled];
 		NSMenu *sub = [[NSMenu alloc] initWithTitle:d.title];
 		[sub setDelegate:target];
 		for (VGioMenuDecl *k in vgio_menu_children(d.itemTag)) {
@@ -405,16 +433,27 @@ static NSMenu *vgio_menu_find(NSMenu *menu, NSString *title) {
 char *vgio_menu_test_shown(const char *submenu) {
 	@autoreleasepool {
 		[vgio_menu_test_target menuNeedsUpdate:vgio_menu_test_menu];
-		NSMenu *sub = vgio_menu_find(vgio_menu_test_menu, submenu != NULL ? @(submenu) : @"");
+		NSString *title = submenu != NULL ? @(submenu) : @"";
+		NSMenu *sub = vgio_menu_test_menu;
+		if (![[sub title] isEqualToString:title]) {
+			sub = vgio_menu_find(vgio_menu_test_menu, title);
+		}
 		if (sub == nil) {
 			return NULL;
 		}
 		[vgio_menu_test_target menuNeedsUpdate:sub];
 		// Without an application, NSMenu's update validates no item, so
-		// each item is validated here, as AppKit validates it.
+		// each item is validated here, as AppKit validates it: an item
+		// with submenuAction: is enabled, and the target validates each
+		// item whose action it answers.
 		NSMutableArray<NSString *> *lines = [NSMutableArray array];
 		for (NSMenuItem *item in [sub itemArray]) {
-			BOOL enabled = [vgio_menu_test_target validateMenuItem:item];
+			BOOL enabled = NO;
+			if ([item action] == @selector(submenuAction:)) {
+				enabled = YES;
+			} else if ([item target] == vgio_menu_test_target && [vgio_menu_test_target respondsToSelector:[item action]]) {
+				enabled = [vgio_menu_test_target validateMenuItem:item];
+			}
 			[lines addObject:enabled ? [item title] : [[item title] stringByAppendingString:@" off"]];
 		}
 		return strdup([[lines componentsJoinedByString:@"\n"] UTF8String]);

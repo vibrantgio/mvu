@@ -139,8 +139,8 @@ func nativePress(chars string, shift, control bool) bool {
 }
 
 // nativeShown is what the submenu titled submenu of the bar of the last
-// nativeBuild shows when it opens: one line per item, its title and "off"
-// for a disabled item.
+// nativeBuild shows when it opens, or the bar's one menu when submenu is
+// its title: one line per item, its title and "off" for a disabled item.
 func nativeShown(submenu string) []string {
 	s := C.CString(submenu)
 	defer C.free(unsafe.Pointer(s))
